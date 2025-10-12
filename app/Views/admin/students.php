@@ -4,9 +4,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="h3">Manage Students</h1>
   <div>
-    <a href="<?= base_url('admin/students/create') ?>" class="btn btn-primary me-2">
-      <i class="bi bi-plus-circle"></i> Add New Student
-    </a>
+    <button class="btn btn-primary me-2" onclick="openEnrollStudentModal()">
+      <i class="bi bi-plus-circle"></i> Enroll Student
+    </button>
     <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-outline-secondary">Back</a>
   </div>
 </div>
@@ -36,7 +36,7 @@
   </div>
   <div class="col-auto">
     <label class="form-label">Search</label>
-    <input type="text" name="search" class="form-control" value="<?= esc($search) ?>" placeholder="Name or Student ID">
+    <input type="text" name="search" class="form-control" value="<?= esc($search) ?>" placeholder="Name or LRN">
   </div>
   <div class="col-auto align-self-end">
     <button class="btn btn-primary">Filter</button>
@@ -53,7 +53,7 @@
         <table class="table table-striped table-hover mb-0">
           <thead>
             <tr>
-              <th>Student ID</th>
+              <th>LRN</th>
               <th>Name</th>
               <th>Grade</th>
               <th>Section</th>
@@ -64,14 +64,28 @@
           <tbody>
             <?php foreach ($students as $st): ?>
               <tr>
-                <td><?= esc($st['student_id'] ?? '—') ?></td>
+                <td><?= esc($st['lrn'] ?? '—') ?></td>
                 <td><?= esc($st['first_name'].' '.$st['last_name']) ?></td>
                 <td>Grade <?= esc($st['grade_level']) ?></td>
-                <td><?= esc($st['section_name'] ?? '—') ?></td>
+                <td>
+                  <?php if (empty($st['section_name'])): ?>
+                    <span class="text-warning">
+                      <i class="bi bi-exclamation-triangle me-1"></i>
+                      Not assigned
+                    </span>
+                  <?php else: ?>
+                    <?php 
+                      // Remove "Grade X - " prefix if it exists
+                      $sectionName = $st['section_name'];
+                      $sectionName = preg_replace('/^Grade \d+ - /', '', $sectionName);
+                      echo esc($sectionName);
+                    ?>
+                  <?php endif; ?>
+                </td>
                 <td><span class="badge bg-success">Enrolled</span></td>
                 <td class="text-end">
                   <div class="btn-group" role="group">
-                    <button class="btn btn-sm btn-outline-primary" onclick="openStudentModal(<?= $st['id'] ?>)" title="View Details">
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewStudent(<?= $st['id'] ?>)" title="View Details">
                       <i class="bi bi-eye"></i>
                     </button>
                     <button class="btn btn-sm btn-outline-warning" onclick="editStudent(<?= $st['id'] ?>)" title="Edit Student">
@@ -164,13 +178,23 @@
     <div class="custom-modal-body">
       <form id="editStudentForm">
         <div class="row">
-          <div class="col-md-6">
+          <div class="col-md-4">
             <div class="mb-3">
-              <label class="form-label">Student ID</label>
-              <input type="text" class="form-control" name="student_id" id="editStudentId" required>
+              <label class="form-label">LRN</label>
+              <input type="text" class="form-control" name="lrn" id="editLrn" required>
             </div>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-4">
+            <div class="mb-3">
+              <label class="form-label">Student Type</label>
+              <select class="form-select" name="student_type" id="editStudentType">
+                <option value="">Select Type</option>
+                <option value="New Student">New Student</option>
+                <option value="Transferee">Transferee</option>
+              </select>
+            </div>
+          </div>
+          <div class="col-md-4">
             <div class="mb-3">
               <label class="form-label">Email</label>
               <input type="email" class="form-control" name="email" id="editEmail" required>
@@ -523,6 +547,11 @@
 // Store student data for quick access
 const studentsData = <?= json_encode($students) ?>;
 
+// View student details in full page
+function viewStudent(studentId) {
+  window.location.href = `<?= base_url('admin/students/view/') ?>${studentId}`;
+}
+
 // Open custom modal
 function openStudentModal(studentId) {
   const modal = document.getElementById('customStudentModal');
@@ -603,7 +632,7 @@ function loadBasicStudentDetails(student, detailsContainer) {
             Personal Information
           </div>
           <table class="student-info-table">
-            <tr><td>Student ID:</td><td>${student.student_id || 'N/A'}</td></tr>
+            <tr><td>LRN:</td><td>${student.lrn || 'N/A'}</td></tr>
             <tr><td>Full Name:</td><td>${student.first_name} ${student.middle_name || ''} ${student.last_name} ${student.suffix || ''}</td></tr>
             <tr><td>Gender:</td><td>${student.gender || 'N/A'}</td></tr>
             <tr><td>Date of Birth:</td><td>${student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A'}</td></tr>
@@ -841,7 +870,7 @@ function loadEmergencyContacts() {
       <tr>
         <td>
           <strong>${student.first_name} ${student.last_name}</strong><br>
-          <small class="text-muted">${student.student_id || 'N/A'} - Grade ${student.grade_level}</small>
+          <small class="text-muted">${student.lrn || 'N/A'} - Grade ${student.grade_level}</small>
         </td>
         <td>
           <strong>Name:</strong> ${student.emergency_contact_name || 'N/A'}<br>
@@ -870,7 +899,8 @@ function editStudent(studentId) {
   }
   
   // Populate form fields
-  document.getElementById('editStudentId').value = student.student_id || '';
+  document.getElementById('editLrn').value = student.lrn || '';
+  document.getElementById('editStudentType').value = student.student_type || '';
   document.getElementById('editEmail').value = student.email || '';
   document.getElementById('editFirstName').value = student.first_name || '';
   document.getElementById('editLastName').value = student.last_name || '';
@@ -924,6 +954,159 @@ function saveStudent() {
     alert('Failed to update student');
   });
 }
+
+// Enroll Student Modal Functions
+function buildEnrollStudentModal() {
+  const existing = document.getElementById('enrollStudentModal');
+  if (existing) existing.remove();
+
+  const html = `
+  <div class="modal fade" id="enrollStudentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Enroll New Student</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="enrollStudentForm" method="post" action="<?= base_url('admin/students/store') ?>">
+        <?= str_replace(["\n","\r"], '', csrf_field()) ?>
+        <div class="modal-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">First Name *</label>
+                <input type="text" class="form-control" name="first_name" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Last Name *</label>
+                <input type="text" class="form-control" name="last_name" required>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Gender *</label>
+                <select class="form-select" name="gender" required>
+                  <option value="">Select Gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Grade Level *</label>
+                <select class="form-select" name="grade_level" required>
+                  <option value="">Select Grade</option>
+                  <option value="7">Grade 7</option>
+                  <option value="8">Grade 8</option>
+                  <option value="9">Grade 9</option>
+                  <option value="10">Grade 10</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Date of Birth *</label>
+                <input type="date" class="form-control" name="date_of_birth" required>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" class="form-control" name="email">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Contact Number</label>
+                <input type="text" class="form-control" name="contact_number">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <textarea class="form-control" name="address" rows="2"></textarea>
+          </div>
+          <hr>
+          <h6 class="text-primary mb-3">Emergency Contact Information</h6>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Emergency Contact Name *</label>
+                <input type="text" class="form-control" name="emergency_contact_name" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Emergency Contact Number *</label>
+                <input type="text" class="form-control" name="emergency_contact_number" required>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Relationship *</label>
+            <select class="form-select" name="emergency_contact_relationship" required>
+              <option value="">Select Relationship</option>
+              <option value="Father">Father</option>
+              <option value="Mother">Mother</option>
+              <option value="Guardian">Guardian</option>
+              <option value="Grandfather">Grandfather</option>
+              <option value="Grandmother">Grandmother</option>
+              <option value="Uncle">Uncle</option>
+              <option value="Aunt">Aunt</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Enroll Student</button>
+        </div>
+      </form>
+    </div></div>
+  </div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+  return document.getElementById('enrollStudentModal');
+}
+
+function openEnrollStudentModal() {
+  const modalEl = buildEnrollStudentModal();
+  const modal = new bootstrap.Modal(modalEl, { backdrop: true, keyboard: true, focus: true });
+  modal.show();
+}
+
+// Handle enrollment form submission
+document.addEventListener('submit', function(e) {
+  if (e.target.id === 'enrollStudentForm') {
+    e.preventDefault();
+    
+    const formData = new FormData(e.target);
+    
+    fetch(e.target.action, {
+      method: 'POST',
+      body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        bootstrap.Modal.getInstance(document.getElementById('enrollStudentModal')).hide();
+        alert('Student enrolled successfully!');
+        location.reload();
+      } else {
+        alert('Error: ' + (data.error || 'Failed to enroll student'));
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Failed to enroll student');
+    });
+  }
+});
 
 // Delete student function
 function deleteStudent(studentId, studentName) {

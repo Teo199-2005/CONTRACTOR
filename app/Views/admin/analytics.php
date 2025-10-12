@@ -1,5 +1,9 @@
 <?= $this->extend('dashboard_layout') ?>
 <?= $this->section('content') ?>
+<!-- Prevent caching of analytics data -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <div class="d-flex justify-content-between align-items-center mb-3 analytics-header">
   <h1 class="h5 mb-0">Analytics Dashboard</h1>
   <div class="d-flex gap-2">
@@ -43,32 +47,29 @@
     <!-- Left: 2x2 charts grid (compact) -->
     <div class="analytics-cell">
       <div class="charts-grid">
+
         <div class="card chart-card">
           <div class="card-header d-flex justify-content-between align-items-center py-2">
-            <strong class="small">Enrolled Students</strong>
-            <div class="btn-group btn-group-sm" role="group">
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="changeYear(2023)">2023</button>
-              <button type="button" class="btn btn-primary btn-sm" onclick="changeYear(2024)">2024</button>
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="changeYear(2025)">2025</button>
-            </div>
+            <strong class="small">Teachers Overview</strong>
+            <small class="text-muted d-none d-md-inline">Faculty</small>
           </div>
           <div class="card-body py-2">
             <div class="row mb-2">
               <div class="col-6">
                 <div class="text-center">
-                  <div class="h5 mb-0 text-primary"><?= array_sum(array_column($enrollmentTrends ?? [], 'count')) ?></div>
-                  <small class="text-muted">This Year</small>
+                  <div class="h5 mb-0 text-primary"><?= $teacherStats['active'] ?? 0 ?></div>
+                  <small class="text-muted">Active Teachers</small>
                 </div>
               </div>
               <div class="col-6">
                 <div class="text-center">
-                  <div class="h5 mb-0 text-success">+<?= round(((array_sum(array_column($enrollmentTrends ?? [], 'count')) - array_sum(array_column($enrollmentTrendsPrev ?? [], 'count'))) / max(array_sum(array_column($enrollmentTrendsPrev ?? [], 'count')), 1)) * 100, 1) ?>%</div>
-                  <small class="text-muted">Growth</small>
+                  <div class="h5 mb-0 text-warning"><?= $teacherStats['with_adviser'] ?? 0 ?></div>
+                  <small class="text-muted">With Sections</small>
                 </div>
               </div>
             </div>
-            <div class="chart-container line-chart" style="height: 50px;">
-              <canvas id="trendChart" class="chart-canvas"></canvas>
+            <div class="chart-container pie-chart" style="height: 50px;">
+              <canvas id="teacherChart" class="chart-canvas"></canvas>
             </div>
           </div>
         </div>
@@ -122,6 +123,7 @@
             </div>
           </div>
         </div>
+
         <div class="card chart-card">
           <div class="card-header d-flex justify-content-between align-items-center py-2">
             <strong class="small">Enrollment Status</strong>
@@ -191,7 +193,9 @@
           <div class="metric-row"><span>Grade 7</span><strong><?= esc($gradeAverages[7] ?? 0) ?></strong></div>
           <div class="metric-row"><span>Grade 8</span><strong><?= esc($gradeAverages[8] ?? 0) ?></strong></div>
           <div class="metric-row"><span>Grade 9</span><strong><?= esc($gradeAverages[9] ?? 0) ?></strong></div>
-          <div class="metric-row mb-0"><span>Grade 10</span><strong><?= esc($gradeAverages[10] ?? 0) ?></strong></div>
+          <div class="metric-row"><span>Grade 10</span><strong><?= esc($gradeAverages[10] ?? 0) ?></strong></div>
+          <div class="metric-row"><span>Grade 11</span><strong><?= esc($gradeAverages[11] ?? 0) ?></strong></div>
+          <div class="metric-row mb-0"><span>Grade 12</span><strong><?= esc($gradeAverages[12] ?? 0) ?></strong></div>
           <small class="text-muted d-block mt-1 small">SY: 2024-2025</small>
         </div>
       </div>
@@ -215,14 +219,20 @@ const trendPrevCounts = trendPrev.map(x => x.count);
 const genderData = <?= json_encode($genderDistribution ?? []) ?>;
 const gradeData = <?= json_encode($gradeDistribution ?? []) ?>;
 const statusData = <?= json_encode($statusDistribution ?? []) ?>;
+const teacherData = <?= json_encode($teacherStats ?? []) ?>;
 
 
 
 // Grade Bar (modern blue palette)
-new Chart(document.getElementById('gradeChart'), { type: 'bar', data: { labels: ['Grade 7','Grade 8','Grade 9','Grade 10'], datasets: [{ data: [gradeData['7'] ?? 0, gradeData['8'] ?? 0, gradeData['9'] ?? 0, gradeData['10'] ?? 0], backgroundColor: [colorPrimary, colorPrimaryLight, '#60a5fa', '#93c5fd'], borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(15,23,42,0.06)' }, ticks: { stepSize: 1, color: colorHeading, maxTicksLimit: 4 } }, x: { grid: { display: false }, ticks: { color: colorHeading } } }, plugins: { legend: { display: false } } } });
+new Chart(document.getElementById('gradeChart'), { type: 'bar', data: { labels: ['Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'], datasets: [{ data: [gradeData['7'] ?? 0, gradeData['8'] ?? 0, gradeData['9'] ?? 0, gradeData['10'] ?? 0, gradeData['11'] ?? 0, gradeData['12'] ?? 0], backgroundColor: [colorPrimary, colorPrimaryLight, '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'], borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: 'rgba(15,23,42,0.06)' }, ticks: { stepSize: 1, color: colorHeading, maxTicksLimit: 4 } }, x: { grid: { display: false }, ticks: { color: colorHeading } } }, plugins: { legend: { display: false } } } });
+
+// Teacher Doughnut (orange shades)
+new Chart(document.getElementById('teacherChart'), { type: 'doughnut', data: { labels: ['With Sections','Available'], datasets: [{ data: [teacherData.with_adviser ?? 0, teacherData.without_adviser ?? 0], backgroundColor: ['#f59e0b', '#fbbf24'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: colorHeading, boxWidth: 10 } } } } });
 
 // Gender Doughnut (blue shades)
 new Chart(document.getElementById('genderChart'), { type: 'doughnut', data: { labels: ['Male','Female'], datasets: [{ data: [genderData.male ?? 0, genderData.female ?? 0], backgroundColor: [colorPrimary, colorPrimaryLight], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: colorHeading, boxWidth: 10 } } } } });
+
+
 
 // Enrollment Status (doughnut)
 new Chart(document.getElementById('statusChart'), { type: 'doughnut', data: { labels: ['Enrolled','Pending','Approved','Rejected'], datasets: [{ data: [statusData.enrolled ?? 0, statusData.pending ?? 0, statusData.approved ?? 0, statusData.rejected ?? 0], backgroundColor: [colorPrimary, colorPrimaryLight, '#60a5fa', '#94a3b8'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { color: colorHeading, boxWidth: 10 } } } } });

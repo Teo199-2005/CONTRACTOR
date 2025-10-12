@@ -166,17 +166,20 @@ class SectionModel extends Model
      */
     public function getSectionsWithAdviser(string $schoolYear): array
     {
-        return $this->select('sections.*, COUNT(students.id) as current_enrollment,
-                             teachers.first_name as adviser_first_name,
-                             teachers.last_name as adviser_last_name,
-                             teachers.email as adviser_email,
-                             CONCAT(teachers.first_name, " ", teachers.last_name) as adviser_name')
-            ->join('students', 'students.section_id = sections.id AND students.enrollment_status = "enrolled"', 'left')
-            ->join('teachers', 'teachers.id = sections.adviser_id', 'left')
-            ->where('sections.school_year', $schoolYear)
-            ->groupBy('sections.id')
-            ->orderBy('sections.grade_level', 'ASC')
-            ->orderBy('sections.section_name', 'ASC')
-            ->findAll();
+        $db = \Config\Database::connect();
+        return $db->query("
+            SELECT s.*, 
+                   COUNT(st.id) as current_enrollment,
+                   t.first_name as adviser_first_name,
+                   t.last_name as adviser_last_name,
+                   t.email as adviser_email,
+                   CONCAT(t.first_name, ' ', t.last_name) as adviser_name
+            FROM sections s
+            LEFT JOIN students st ON st.section_id = s.id AND st.enrollment_status = 'enrolled'
+            LEFT JOIN teachers t ON t.id = s.adviser_id AND t.deleted_at IS NULL
+            WHERE s.school_year = ? AND s.deleted_at IS NULL
+            GROUP BY s.id
+            ORDER BY s.grade_level ASC, s.section_name ASC
+        ", [$schoolYear])->getResultArray();
     }
 }

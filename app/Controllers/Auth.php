@@ -38,7 +38,7 @@ class Auth extends BaseController
     public function attempt()
     {
         $rules = [
-            'email' => 'required|valid_email',
+            'identifier' => 'required',
             'password' => 'required'
         ];
 
@@ -46,58 +46,63 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
         }
 
-        $credentials = [
-            'email' => $this->request->getPost('email'),
-            'password' => $this->request->getPost('password')
-        ];
-
+        $identifier = $this->request->getPost('identifier');
+        $password = $this->request->getPost('password');
         $remember = (bool) $this->request->getPost('remember');
 
-        $result = $this->auth->attempt($credentials, $remember);
-
-        if ($result->isOK()) {
-            return redirect()->to($this->getDashboardUrl());
+        // Find user by PRC license (teacher) or LRN (student)
+        $teacherModel = model('TeacherModel');
+        $studentModel = model('StudentModel');
+        $userModel = model(UserModel::class);
+        
+        $user = null;
+        
+        // Check if it's a teacher (PRC license)
+        $teacher = $teacherModel->where('license_number', $identifier)->first();
+        if ($teacher && $teacher['user_id']) {
+            $user = $userModel->find($teacher['user_id']);
         }
-
-        // Manual fallback: verify against Shield identities and perform session login
-        try {
-            /** @var \CodeIgniter\Shield\Models\UserIdentityModel $identityModel */
-            $identityModel = model(\CodeIgniter\Shield\Models\UserIdentityModel::class);
-            $identity = $identityModel
-                ->where('type', 'email_password')
-                ->where('secret', $credentials['email'])
-                ->first();
-
-            if (! $identity) {
-                return redirect()->back()->withInput()->with('error', 'Invalid email or password.');
+        
+        // Check if it's a student (LRN)
+        if (!$user) {
+            $student = $studentModel->where('lrn', $identifier)->first();
+            if ($student && $student['user_id']) {
+                $user = $userModel->find($student['user_id']);
             }
-
-            $passwords = service('passwords');
-            if (! $passwords->verify($credentials['password'], $identity->secret2)) {
-                return redirect()->back()->withInput()->with('error', 'Invalid email or password.');
-            }
-
-            /** @var \CodeIgniter\Shield\Models\UserModel $userModel */
-            $userModel = model(\CodeIgniter\Shield\Models\UserModel::class);
-            $user = $userModel->find($identity->user_id);
-            if (! $user) {
-                return redirect()->back()->withInput()->with('error', 'Account not found.');
-            }
-
-            // Ensure active
-            if ((int) ($user->active ?? 0) !== 1) {
-                $user->active = 1;
-                $userModel->save($user);
-            }
-
-            // Perform session login
-            $sessionAuth = service('auth')->getAuthenticator('session');
-            $sessionAuth->login($user);
-
-            return redirect()->to($this->getDashboardUrl());
-        } catch (\Throwable $e) {
-            return redirect()->back()->withInput()->with('error', 'Authentication system error.');
         }
+        
+        // Check admin by email (fallback for admin accounts)
+        if (!$user && filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+            $user = $userModel->where('email', $identifier)->first();
+        }
+        
+        if (!$user) {
+            return redirect()->back()->withInput()->with('error', 'Invalid PRC license number, LRN, or password.');
+        }
+        
+        // Get password hash from auth_identities
+        $db = \Config\Database::connect();
+        $identity = $db->table('auth_identities')
+            ->where('user_id', $user->id)
+            ->where('type', 'email_password')
+            ->get()
+            ->getRow();
+        
+        if (!$identity || !password_verify($password, $identity->secret)) {
+            return redirect()->back()->withInput()->with('error', 'Invalid PRC license number, LRN, or password.');
+        }
+        
+        // Ensure user is active
+        if ((int) ($user->active ?? 0) !== 1) {
+            $user->active = 1;
+            $userModel->save($user);
+        }
+        
+        // Manually log in the user
+        $sessionAuth = auth()->getAuthenticator('session');
+        $sessionAuth->login($user);
+        
+        return redirect()->to($this->getDashboardUrl());
     }
 
     public function register()
@@ -139,112 +144,50 @@ class Auth extends BaseController
     public function demo(string $role)
     {
         $role = strtolower($role);
-        $map = [
-            'admin' => 'demo.admin@lphs.edu',
-            'teacher' => 'demo.teacher@lphs.edu',
-            'student' => 'demo.student@lphs.edu',
-            'parent' => 'demo.parent@lphs.edu',
-            'newstudent' => 'new.student@lphs.edu', // New approved student account
+        
+        // Demo credentials mapping - use existing accounts
+        $demoCredentials = [
+            'admin' => ['email' => 'admin@lphs.edu', 'password' => 'admin123'],
+            'teacher' => ['email' => 'demo.teacher@lphs.edu', 'password' => 'DemoPass123!'],
+            'student' => ['email' => 'student@lphs.edu', 'password' => 'student123'],
         ];
-        if (! isset($map[$role])) {
+        
+        if (!isset($demoCredentials[$role])) {
             return redirect()->to(base_url('login'))->with('error', 'Unknown demo role.');
         }
-
-        $email = $map[$role];
-
-        try {
-            /** @var \CodeIgniter\Shield\Models\UserIdentityModel $identityModel */
-            $identityModel = model(\CodeIgniter\Shield\Models\UserIdentityModel::class);
-            /** @var \CodeIgniter\Shield\Models\UserModel $userModel */
-            $userModel = model(\CodeIgniter\Shield\Models\UserModel::class);
-
-            // Find existing identity
-            $identity = $identityModel
-                ->where('type', 'email_password')
-                ->where('secret', $email)
-                ->first();
-
-            if (! $identity) {
-                // Create user + identity via Shield User entity to ensure identity creation
-                $userEntity = new \CodeIgniter\Shield\Entities\User([
-                    'email' => $email,
-                    'password' => 'DemoPass123!',
-                    'active' => 1,
-                ]);
-                $userModel->save($userEntity);
-                $identity = $identityModel
-                    ->where('type', 'email_password')
-                    ->where('secret', $email)
-                    ->first();
-                if (! $identity) {
-                    throw new \RuntimeException('Failed to create demo identity');
-                }
-            }
-
-            // Ensure password hash, active flag, and group link
-            if ($identity) {
-                $identity->secret2 = service('passwords')->hash('DemoPass123!');
-                $identityModel->save($identity);
-
-                $user = $userModel->find($identity->user_id);
-                if ($user) {
-                    if ((int) ($user->active ?? 0) !== 1) {
-                        $user->active = 1;
-                        $userModel->save($user);
-                    }
-                    $db = \Config\Database::connect();
-
-                    // Determine the actual group for newstudent role
-                    $actualGroup = ($role === 'newstudent') ? 'student' : $role;
-
-                    $db->table('auth_groups_users')->ignore(true)->insert([
-                        'user_id' => $user->id,
-                        'group'   => $actualGroup,
-                        'created_at' => date('Y-m-d H:i:s'),
-                    ]);
-
-                    // Create student record for newstudent demo account
-                    if ($role === 'newstudent') {
-                        $studentModel = new \App\Models\StudentModel();
-                        $existingStudent = $studentModel->where('user_id', $user->id)->first();
-
-                        if (!$existingStudent) {
-                            $studentModel->insert([
-                                'user_id' => $user->id,
-                                'first_name' => 'John',
-                                'last_name' => 'Doe',
-                                'gender' => 'Male',
-                                'date_of_birth' => '2009-05-15',
-                                'email' => 'new.student@lphs.edu',
-                                'enrollment_status' => 'approved', // Already approved by admin
-                                'grade_level' => 8,
-                                'school_year' => '2024-2025',
-                                'student_id' => $studentModel->createUniqueStudentId(),
-                                'address' => '123 Main Street, City',
-                                'contact_number' => '09123456789',
-                                'emergency_contact_name' => 'Jane Doe',
-                                'emergency_contact_number' => '09987654321',
-                                'emergency_contact_relationship' => 'Mother',
-                            ]);
-                        }
-                    }
-
-                    // Log in via session authenticator and go to dashboard
-                    $sessionAuth = service('auth')->getAuthenticator('session');
-                    $sessionAuth->login($user);
-                    return redirect()->to(base_url('dashboard'));
-                }
-            }
-        } catch (\Throwable $e) {
-            // As a last resort, run seeder then redirect back to demo to try again
-            try {
-                $seeder = \Config\Database::seeder();
-                $seeder->call('DemoAccountsSeeder');
-            } catch (\Throwable $e2) {}
-            return redirect()->to(base_url('login'))->with('error', 'Demo login failed. Please click Demo Login again.');
+        
+        $creds = $demoCredentials[$role];
+        
+        // Use email for all demo accounts as fallback
+        $identifier = $creds['email'];
+        
+        // Find user by identifier and login directly
+        $teacherModel = model('TeacherModel');
+        $studentModel = model('StudentModel');
+        $userModel = model(UserModel::class);
+        
+        $user = null;
+        
+        // Find user by email for all demo accounts
+        $user = $userModel->where('email', $identifier)->first();
+        
+        if (!$user) {
+            return redirect()->to(base_url('login'))->with('error', 'Demo account not found. Please ensure demo data is set up.');
         }
+        
+        // Ensure user is active
+        if ((int) ($user->active ?? 0) !== 1) {
+            $user->active = 1;
+            $userModel->save($user);
+        }
+        
+        // Perform session login
+        $sessionAuth = service('auth')->getAuthenticator('session');
+        $sessionAuth->login($user);
+        
+        return redirect()->to($this->getDashboardUrl());
 
-        return redirect()->to(base_url('login'))->with('error', 'Demo login failed. Please click Demo Login again.');
+
     }
 
     public function store()
@@ -257,7 +200,7 @@ class Auth extends BaseController
             'password_confirm' => 'required|matches[password]',
             'gender' => 'required|in_list[Male,Female]',
             'date_of_birth' => 'required|valid_date',
-            'grade_level' => 'required|integer|greater_than[6]|less_than[11]',
+            'grade_level' => 'required|integer|greater_than[6]|less_than[13]',
             'contact_number' => 'permit_empty|max_length[20]',
             'address' => 'permit_empty',
             // Files are optional; basic validation is applied during handling
@@ -299,6 +242,8 @@ class Auth extends BaseController
             // Create student record
             $studentData = [
                 'user_id' => $userId,
+                'lrn' => $this->request->getPost('lrn'),
+                'student_type' => $this->request->getPost('student_type'),
                 'first_name' => $this->request->getPost('first_name'),
                 'middle_name' => $this->request->getPost('middle_name'),
                 'last_name' => $this->request->getPost('last_name'),
@@ -316,13 +261,16 @@ class Auth extends BaseController
                 'emergency_contact_relationship' => $this->request->getPost('emergency_contact_relationship'),
                 'enrollment_status' => 'pending',
                 'grade_level' => $this->request->getPost('grade_level'),
-                'school_year' => '2024-2025'
+                'school_year' => '2024-2025',
+                'temp_password' => $this->request->getPost('password')
             ];
 
             $studentId = $studentModel->insert($studentData);
 
             if (!$studentId) {
-                throw new \Exception('Failed to create student record');
+                $errors = $studentModel->errors();
+                $errorMsg = !empty($errors) ? implode(', ', $errors) : 'Unknown database error';
+                throw new \Exception('Failed to create student record: ' . $errorMsg);
             }
 
             // Handle optional enrollment document uploads
@@ -335,7 +283,7 @@ class Auth extends BaseController
             }
 
             return redirect()->to(base_url('login'))
-                ->with('success', 'Registration submitted successfully! Please wait for admin approval.');
+                ->with('success', 'Registration submitted successfully! You will receive an email with your login credentials once your application is approved by school administrators.');
 
         } catch (\Exception $e) {
             $db->transRollback();
@@ -444,10 +392,18 @@ class Auth extends BaseController
                 $student = $studentModel->where('user_id', $user->id)->first();
 
                 if (!$student) {
-                    // Student record not found - logout and redirect to login with error
-                    $this->auth->logout();
-                    session()->setFlashdata('error', 'Student record not found. Please contact the administration.');
-                    return base_url('login');
+                    // Try to find student by email as fallback
+                    $student = $studentModel->where('email', $user->email)->first();
+                    
+                    if (!$student) {
+                        // Student record not found - logout and redirect to login with error
+                        $this->auth->logout();
+                        session()->setFlashdata('error', 'Student record not found. Please contact the administration.');
+                        return base_url('login');
+                    } else {
+                        // Update student record with correct user_id
+                        $studentModel->update($student['id'], ['user_id' => $user->id]);
+                    }
                 }
 
                 // Check enrollment status

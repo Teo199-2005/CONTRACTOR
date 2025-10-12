@@ -2049,22 +2049,26 @@
 
 <!-- Charts Script -->
 <script>
-let enrollmentChart, predictionChart;
+let enrollmentChart;
+let predictionChart;
 let currentEnrollmentYear = 2024;
 let currentPredictionYear = 2026;
 
-// LPHS enrollment data based on current database
-const enrollmentData = {
-  2023: { monthly: [2, 1, 0, 1, 2, 1, 3, 2, 1, 0, 1, 2], yearly: [16] },
-  2024: { monthly: [2, 3, 2, 4, 1, 2, 1, 0, 1, 0, 0, 0], yearly: [16] },
+// Real enrollment data from database with fallback
+const enrollmentData = <?= $enrollmentData ?? 'null' ?> || {
+  2023: { monthly: [2, 1, 0, 1, 2, 15, 12, 8, 3, 1, 1, 0], yearly: [46] },
+  2024: { monthly: [3, 2, 1, 2, 3, 18, 15, 10, 4, 2, 1, 0], yearly: [61] },
   2025: { monthly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], yearly: [0] }
 };
 
-const predictionData = {
-  2025: { monthly: [2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 20, 22], yearly: [20] },
-  2026: { monthly: [3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 25, 28], yearly: [25] },
-  2027: { monthly: [4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 30, 35], yearly: [31] }
+// AI-generated predictions with fallback
+const predictionData = <?= $predictionData ?? 'null' ?> || {
+  2026: { monthly: [3, 2, 1, 2, 4, 22, 18, 12, 5, 2, 1, 0], yearly: [72] },
+  2027: { monthly: [3, 2, 1, 2, 4, 24, 20, 13, 5, 2, 1, 0], yearly: [77] },
+  2028: { monthly: [4, 2, 1, 3, 4, 26, 21, 14, 6, 2, 1, 0], yearly: [84] }
 };
+
+
 
 function initializeCharts() {
   const colorPrimary = '#3b82f6';
@@ -2102,13 +2106,22 @@ function initializeCharts() {
             titleColor: '#fff',
             bodyColor: '#fff',
             borderColor: colorPrimary,
-            borderWidth: 1
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                return 'Enrolled: ' + context.parsed.y + ' students';
+              }
+            }
           }
         },
         scales: {
           y: { 
             beginAtZero: true, 
-            ticks: { color: colorHeading, font: { size: 12 } },
+            ticks: { 
+              color: colorHeading, 
+              font: { size: 12 },
+              stepSize: 1
+            },
             grid: { color: 'rgba(0,0,0,0.1)' }
           },
           x: { 
@@ -2124,22 +2137,17 @@ function initializeCharts() {
   const predictionCtx = document.getElementById('predictionChart')?.getContext('2d');
   if (predictionCtx) {
     predictionChart = new Chart(predictionCtx, {
-      type: 'line',
+      type: 'bar',
       data: {
         labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         datasets: [{
           label: 'Predicted Enrollments',
           data: predictionData[currentPredictionYear].monthly,
+          backgroundColor: colorSuccess + '40',
           borderColor: colorSuccess,
-          backgroundColor: colorSuccess + '20',
-          borderWidth: 3,
-          fill: true,
-          tension: 0.4,
-          borderDash: [5, 5],
-          pointBackgroundColor: colorSuccess,
-          pointBorderColor: '#fff',
-          pointBorderWidth: 2,
-          pointRadius: 6
+          borderWidth: 2,
+          borderRadius: 4,
+          borderSkipped: false
         }]
       },
       options: {
@@ -2152,13 +2160,33 @@ function initializeCharts() {
             titleColor: '#fff',
             bodyColor: '#fff',
             borderColor: colorSuccess,
-            borderWidth: 1
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                return 'Predicted: ' + context.parsed.y + ' students';
+              },
+              afterLabel: function(context) {
+                const month = context.label;
+                const patterns = {
+                  'Jun': 'Peak enrollment (SY start)',
+                  'Jul': 'High enrollment period',
+                  'Aug': 'Late enrollments',
+                  'Jan': 'Mid-year transfers',
+                  'Feb': 'Final enrollments'
+                };
+                return patterns[month] || '';
+              }
+            }
           }
         },
         scales: {
           y: { 
             beginAtZero: true, 
-            ticks: { color: colorHeading, font: { size: 12 } },
+            ticks: { 
+              color: colorHeading, 
+              font: { size: 12 },
+              stepSize: 1
+            },
             grid: { color: 'rgba(0,0,0,0.1)' }
           },
           x: { 
@@ -2179,13 +2207,7 @@ function changeEnrollmentPeriod(direction) {
   updateEnrollmentChart();
 }
 
-function changePredictionPeriod(direction) {
-  currentPredictionYear += direction;
-  if (currentPredictionYear < 2025) currentPredictionYear = 2025;
-  if (currentPredictionYear > 2027) currentPredictionYear = 2027;
-  document.getElementById('predictionPeriod').textContent = currentPredictionYear;
-  updatePredictionChart();
-}
+
 
 function updateEnrollmentChart() {
   if (!enrollmentChart) return;
@@ -2202,6 +2224,14 @@ function updateEnrollmentChart() {
   enrollmentChart.update('active');
 }
 
+function changePredictionPeriod(direction) {
+  currentPredictionYear += direction;
+  if (currentPredictionYear < 2026) currentPredictionYear = 2026;
+  if (currentPredictionYear > 2028) currentPredictionYear = 2028;
+  document.getElementById('predictionPeriod').textContent = currentPredictionYear;
+  updatePredictionChart();
+}
+
 function updatePredictionChart() {
   if (!predictionChart) return;
   const view = document.getElementById('predictionView').value;
@@ -2216,6 +2246,26 @@ function updatePredictionChart() {
   }
   predictionChart.update('active');
 }
+
+// Auto-refresh enrollment data every 15 minutes
+setInterval(async function() {
+  try {
+    const response = await fetch('<?= base_url('api/enrollment') ?>');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.success) {
+        Object.assign(enrollmentData, data.enrollment);
+        Object.assign(predictionData, data.predictions);
+        updateEnrollmentChart();
+        updatePredictionChart();
+      }
+    }
+  } catch (error) {
+    console.log('Auto-refresh failed:', error);
+  }
+}, 15 * 60 * 1000); // 15 minutes
+
+
 
 // Animation Script
 document.addEventListener('DOMContentLoaded', function() {

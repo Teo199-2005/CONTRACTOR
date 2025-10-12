@@ -39,9 +39,10 @@
         </div>
         <div class="col-md-6">
           <div class="mb-3">
-            <label for="teacher_id" class="form-label">Teacher ID <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="teacher_id" name="teacher_id" 
-                   value="<?= old('teacher_id') ?>" readonly placeholder="Auto-generated">
+            <label for="license_number" class="form-label">PRC License Number</label>
+            <input type="text" class="form-control" id="license_number" name="license_number" 
+                   value="<?= old('license_number') ?>" placeholder="PRC License Number (Optional)" maxlength="20">
+            <div class="form-text">Optional - Enter PRC License Number if available</div>
           </div>
         </div>
         <div class="col-md-6">
@@ -135,9 +136,9 @@
         </div>
         <div class="col-md-6">
           <div class="mb-3">
-            <label for="hire_date" class="form-label">Hire Date <span class="text-danger">*</span></label>
-            <input type="date" class="form-control" id="hire_date" name="hire_date" 
-                   value="<?= old('hire_date') ?>" required>
+            <label for="date_hired" class="form-label">Date Hired <span class="text-danger">*</span></label>
+            <input type="date" class="form-control" id="date_hired" name="date_hired" 
+                   value="<?= old('date_hired') ?>" required>
           </div>
         </div>
         <div class="col-md-6">

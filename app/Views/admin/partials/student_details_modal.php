@@ -6,7 +6,9 @@
         Personal Information
       </div>
       <table class="student-details-table">
+        <tr><td>LRN:</td><td><?= esc($student['lrn'] ?? 'N/A') ?></td></tr>
         <tr><td>Full Name:</td><td><?= esc($student['first_name'] . ' ' . ($student['middle_name'] ?? '') . ' ' . $student['last_name'] . ' ' . ($student['suffix'] ?? '')) ?></td></tr>
+        <tr><td>Student Type:</td><td><?= esc($student['student_type'] ?? 'N/A') ?></td></tr>
         <tr><td>Gender:</td><td><?= esc($student['gender'] ?? 'N/A') ?></td></tr>
         <tr><td>Date of Birth:</td><td><?= $student['date_of_birth'] ? date('M j, Y', strtotime($student['date_of_birth'])) : 'N/A' ?></td></tr>
         <tr><td>Place of Birth:</td><td><?= esc($student['place_of_birth'] ?? 'N/A') ?></td></tr>
@@ -58,7 +60,7 @@
             <?= ucfirst(esc($student['enrollment_status'])) ?>
           </span>
         </td></tr>
-        <tr><td>Applied Date:</td><td><?= $student['created_at'] ? date('M j, Y', strtotime($student['created_at'])) : 'N/A' ?></td></tr>
+        <tr><td>Enrollment Date:</td><td><?= $student['created_at'] ? date('M j, Y', strtotime($student['created_at'])) : 'N/A' ?></td></tr>
       </table>
     </div>
   </div>
@@ -188,6 +190,32 @@
 </div>
 
 <style>
+/* Student Details Table */
+.student-details-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.student-details-table td {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: top;
+}
+
+.student-details-table td:first-child {
+  font-weight: 600;
+  color: #374151;
+  width: 35%;
+}
+
+.student-details-table td:last-child {
+  color: #6b7280;
+}
+
+.student-details-table tr:last-child td {
+  border-bottom: none;
+}
+
 /* Documents Grid Styles */
 .documents-grid {
   display: grid;

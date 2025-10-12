@@ -382,6 +382,20 @@
                 <option value="8" <?= old('grade_level') === '8' ? 'selected' : '' ?>>Grade 8</option>
                 <option value="9" <?= old('grade_level') === '9' ? 'selected' : '' ?>>Grade 9</option>
                 <option value="10" <?= old('grade_level') === '10' ? 'selected' : '' ?>>Grade 10</option>
+                <option value="11" <?= old('grade_level') === '11' ? 'selected' : '' ?>>Grade 11</option>
+                <option value="12" <?= old('grade_level') === '12' ? 'selected' : '' ?>>Grade 12</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">LRN</label>
+              <input type="text" class="form-control" name="lrn" value="<?= old('lrn') ?>" placeholder="e.g. 123456789012" />
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Student Type *</label>
+              <select class="form-select" name="student_type" required>
+                <option value="">Select</option>
+                <option value="New Student" <?= old('student_type') === 'New Student' ? 'selected' : '' ?>>New Student</option>
+                <option value="Transferee" <?= old('student_type') === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
               </select>
             </div>
             <div class="col-md-6">
@@ -474,12 +488,22 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label">Password *</label>
-              <input type="password" class="form-control" name="password" required />
+              <div class="position-relative">
+                <input type="password" class="form-control" name="password" id="password" required />
+                <button type="button" class="btn btn-sm position-absolute" style="right: 8px; top: 50%; transform: translateY(-50%); border: none; background: none; color: #6c757d;" onclick="togglePassword('password')">
+                  <i class="bi bi-eye" id="password-icon"></i>
+                </button>
+              </div>
               <div class="form-text">Minimum 8 characters</div>
             </div>
             <div class="col-md-6">
               <label class="form-label">Confirm Password *</label>
-              <input type="password" class="form-control" name="password_confirm" required />
+              <div class="position-relative">
+                <input type="password" class="form-control" name="password_confirm" id="password_confirm" required />
+                <button type="button" class="btn btn-sm position-absolute" style="right: 8px; top: 50%; transform: translateY(-50%); border: none; background: none; color: #6c757d;" onclick="togglePassword('password_confirm')">
+                  <i class="bi bi-eye" id="password_confirm-icon"></i>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -569,6 +593,19 @@
           changeStep(1);
         }
 
+        function togglePassword(fieldId) {
+          const field = document.getElementById(fieldId);
+          const icon = document.getElementById(fieldId + '-icon');
+          
+          if (field.type === 'password') {
+            field.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+          } else {
+            field.type = 'password';
+            icon.className = 'bi bi-eye';
+          }
+        }
+
         function fillDemoData() {
           // Demo data arrays
           const firstNames = ['Juan', 'Maria', 'Jose', 'Ana', 'Carlos', 'Sofia', 'Miguel', 'Isabella', 'Luis', 'Carmen', 'Pedro', 'Lucia', 'Antonio', 'Elena', 'Francisco'];
@@ -576,7 +613,8 @@
           const lastNames = ['Dela Cruz', 'Santos', 'Garcia', 'Reyes', 'Lopez', 'Martinez', 'Gonzalez', 'Rodriguez', 'Fernandez', 'Morales', 'Jimenez', 'Herrera', 'Medina', 'Castro', 'Ortiz'];
           const suffixes = ['', '', '', 'Jr.', 'Sr.', 'III', ''];
           const genders = ['Male', 'Female'];
-          const gradeLevels = ['7', '8', '9', '10'];
+          const gradeLevels = ['7', '8', '9', '10', '11', '12'];
+          const studentTypes = ['New Student', 'Transferee'];
           const places = ['Tagbilaran City, Bohol', 'Panglao, Bohol', 'Dauis, Bohol', 'Baclayon, Bohol', 'Loboc, Bohol', 'Carmen, Bohol', 'Tubigon, Bohol'];
           const religions = ['Catholic', 'Protestant', 'Iglesia ni Cristo', 'Baptist', 'Methodist', 'Born Again', 'Seventh-day Adventist'];
           const relationships = ['Mother', 'Father', 'Guardian', 'Aunt', 'Uncle', 'Grandmother', 'Grandfather'];
@@ -609,12 +647,14 @@
           const suffix = getRandom(suffixes);
           const gender = getRandom(genders);
           const gradeLevel = getRandom(gradeLevels);
+          const studentType = getRandom(studentTypes);
           const birthDate = getRandomBirthDate();
           const placeOfBirth = getRandom(places);
           const religion = getRandom(religions);
           const contactNumber = getRandomPhone();
           const emergencyContactNumber = getRandomPhone();
           const relationship = getRandom(relationships);
+          const lrn = Math.floor(Math.random() * 900000000000) + 100000000000; // Generate 12-digit LRN
 
           // Generate email based on name
           const emailUsername = (firstName + lastName).toLowerCase().replace(/\s+/g, '');
@@ -633,6 +673,8 @@
           document.querySelector('select[name="gender"]').value = gender;
           document.querySelector('input[name="date_of_birth"]').value = birthDate;
           document.querySelector('select[name="grade_level"]').value = gradeLevel;
+          document.querySelector('input[name="lrn"]').value = lrn;
+          document.querySelector('select[name="student_type"]').value = studentType;
           document.querySelector('input[name="place_of_birth"]').value = placeOfBirth;
           document.querySelector('input[name="nationality"]').value = 'Filipino';
           document.querySelector('input[name="religion"]').value = religion;

@@ -31,6 +31,7 @@ class DemoAccountsSeeder extends Seeder
             if (! $exists) {
                 $tm->insert([
                     'user_id' => $teacherUserId,
+                    'teacher_id' => 'DEMO-T001',
                     'first_name' => 'Demo',
                     'last_name' => 'Teacher',
                     'gender' => 'Male',
@@ -98,6 +99,8 @@ class DemoAccountsSeeder extends Seeder
                     'first_name' => 'Demo',
                     'last_name' => 'Parent',
                     'email' => 'demo.parent@lphs.edu',
+                    'contact_number' => '09123456789',
+                    'address' => 'Demo Address',
                 ]);
             }
         }

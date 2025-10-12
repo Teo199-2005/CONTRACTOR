@@ -6,6 +6,8 @@ use App\Controllers\BaseController;
 use App\Models\TeacherModel;
 use CodeIgniter\Shield\Models\UserModel;
 use App\Models\SectionModel;
+use App\Models\TeacherScheduleModel;
+use App\Models\SubjectModel;
 
 class Teachers extends BaseController
 {
@@ -25,15 +27,14 @@ class Teachers extends BaseController
         $search = $this->request->getGet('search');
         
         // Build query
-        $builder = $teacherModel->select('teachers.*, users.email')
-            ->join('users', 'users.id = teachers.user_id', 'inner');
+        $builder = $teacherModel->select('teachers.*');
         
         if ($search) {
             $builder->groupStart()
                    ->like('teachers.first_name', $search)
                    ->orLike('teachers.last_name', $search)
-                   ->orLike('teachers.teacher_id', $search)
-                   ->orLike('users.email', $search)
+                   ->orLike('teachers.license_number', $search)
+                   ->orLike('teachers.email', $search)
                    ->groupEnd();
         }
         
@@ -88,6 +89,7 @@ class Teachers extends BaseController
         $teacherId = $currentYear . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
 
         $rules = [
+            'license_number' => 'permit_empty|max_length[20]',
             'first_name' => 'required|min_length[2]|max_length[50]',
             'last_name' => 'required|min_length[2]|max_length[50]',
             'email' => 'required|valid_email|is_unique[users.email]',
@@ -99,8 +101,8 @@ class Teachers extends BaseController
             'department' => 'permit_empty|max_length[100]',
             'position' => 'permit_empty|max_length[100]',
             'specialization' => 'permit_empty|max_length[100]',
-            'hire_date' => 'required|valid_date',
-            'employment_status' => 'required|in_list[active,inactive,on_leave]'
+            'date_hired' => 'required|valid_date',
+            'employment_status' => 'required|in_list[active,inactive,resigned,terminated]'
         ];
 
         if (!$this->validate($rules)) {
@@ -137,6 +139,7 @@ class Teachers extends BaseController
         $teacherData = [
             'user_id' => $userId,
             'teacher_id' => $teacherId,
+            'license_number' => $this->request->getPost('license_number'),
             'first_name' => $this->request->getPost('first_name'),
             'last_name' => $this->request->getPost('last_name'),
             'gender' => $this->request->getPost('gender'),
@@ -146,7 +149,7 @@ class Teachers extends BaseController
             'department' => $this->request->getPost('subjects'),
             'position' => $this->request->getPost('position'),
             'specialization' => $this->request->getPost('subjects'),
-            'hire_date' => $this->request->getPost('hire_date'),
+            'date_hired' => $this->request->getPost('date_hired'),
             'employment_status' => $this->request->getPost('employment_status')
         ];
 
@@ -174,10 +177,11 @@ class Teachers extends BaseController
 
         $teacherModel = model(TeacherModel::class);
 
-        // Get teacher with user details
+        // Get teacher with user details - using WHERE clause instead of find()
         $teacher = $teacherModel->select('teachers.*, users.email')
             ->join('users', 'users.id = teachers.user_id', 'inner')
-            ->find($teacherId);
+            ->where('teachers.id', $teacherId)
+            ->first();
 
         if (!$teacher) {
             return redirect()->to('admin/teachers')
@@ -197,23 +201,40 @@ class Teachers extends BaseController
     {
         // Check if user is admin
         if (!auth()->user()->inGroup('admin')) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Unauthorized']);
+            return $this->response->setStatusCode(403)->setJSON(['error' => 'Unauthorized access']);
+        }
+
+        // Validate teacher ID
+        if (!is_numeric($teacherId) || $teacherId <= 0) {
+            return $this->response->setStatusCode(400)->setJSON(['error' => 'Invalid teacher ID']);
         }
 
         $teacherModel = model(TeacherModel::class);
+        
+        try {
+            // Check if teacher exists without join first
+            $teacherExists = $teacherModel->find($teacherId);
+            if (!$teacherExists) {
+                return $this->response->setStatusCode(404)->setJSON(['error' => 'Teacher not found']);
+            }
 
-        // Get teacher with user details
-        $teacher = $teacherModel->select('teachers.*, users.email')
-            ->join('users', 'users.id = teachers.user_id', 'inner')
-            ->find($teacherId);
+            // Get teacher with user details - using WHERE clause instead of find()
+            $teacher = $teacherModel->select('teachers.*, users.email')
+                ->join('users', 'users.id = teachers.user_id', 'left')
+                ->where('teachers.id', $teacherId)
+                ->first();
 
-        if (!$teacher) {
-            return $this->response->setStatusCode(404)->setJSON(['error' => 'Teacher not found']);
+            if (!$teacher) {
+                return $this->response->setStatusCode(404)->setJSON(['error' => 'Teacher data could not be loaded']);
+            }
+
+            return view('admin/partials/teacher_edit_form', [
+                'teacher' => $teacher
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading teacher edit form: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON(['error' => 'Server error occurred while loading teacher data']);
         }
-
-        return view('admin/partials/teacher_edit_form', [
-            'teacher' => $teacher
-        ]);
     }
 
     /**
@@ -221,87 +242,54 @@ class Teachers extends BaseController
      */
     public function update($teacherId)
     {
-        // Check if user is admin
-        if (!auth()->user()->inGroup('admin')) {
-            return $this->response->setStatusCode(403)->setJSON(['error' => 'Unauthorized']);
-        }
+        try {
+            if (!auth()->user()->inGroup('admin')) {
+                return $this->response->setJSON(['success' => false, 'error' => 'Unauthorized']);
+            }
 
-        $teacherModel = model(TeacherModel::class);
-        $userModel = model(UserModel::class);
+            $teacherModel = model(TeacherModel::class);
+            $teacher = $teacherModel->find($teacherId);
+            
+            if (!$teacher) {
+                return $this->response->setJSON(['success' => false, 'error' => 'Teacher not found']);
+            }
 
-        $teacher = $teacherModel->find($teacherId);
-        if (!$teacher) {
-            return $this->response->setStatusCode(404)->setJSON(['error' => 'Teacher not found']);
-        }
+            $data = [
+                'license_number' => $this->request->getPost('license_number') ?: null,
+                'first_name' => $this->request->getPost('first_name'),
+                'last_name' => $this->request->getPost('last_name'),
+                'gender' => $this->request->getPost('gender'),
+                'date_of_birth' => $this->request->getPost('date_of_birth'),
+                'contact_number' => $this->request->getPost('contact_number') ?: null,
+                'address' => $this->request->getPost('address') ?: null,
+                'department' => $this->request->getPost('department') ?: null,
+                'position' => $this->request->getPost('position') ?: null,
+                'specialization' => $this->request->getPost('specialization') ?: null,
+                'date_hired' => $this->request->getPost('date_hired'),
+                'employment_status' => $this->request->getPost('employment_status')
+            ];
 
-        $rules = [
-            'teacher_id' => "required|is_unique[teachers.teacher_id,id,{$teacherId}]",
-            'first_name' => 'required|min_length[2]|max_length[50]',
-            'last_name' => 'required|min_length[2]|max_length[50]',
-            'email' => "required|valid_email|is_unique[users.email,id,{$teacher['user_id']}]",
-            'gender' => 'required|in_list[Male,Female]',
-            'date_of_birth' => 'required|valid_date',
-            'contact_number' => 'permit_empty|max_length[20]',
-            'address' => 'permit_empty|max_length[255]',
-            'department' => 'permit_empty|max_length[100]',
-            'position' => 'permit_empty|max_length[100]',
-            'specialization' => 'permit_empty|max_length[100]',
-            'hire_date' => 'required|valid_date',
-            'employment_status' => 'required|in_list[active,inactive,on_leave]'
-        ];
-
-        // Add password validation only if password is provided
-        if ($this->request->getPost('password')) {
-            $rules['password'] = 'min_length[8]';
-        }
-
-        if (!$this->validate($rules)) {
+            if ($teacherModel->update($teacherId, $data)) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Teacher updated successfully.'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'error' => 'Failed to update teacher.'
+                ]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Teacher update error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'errors' => $this->validator->getErrors()
-            ]);
-        }
-
-        // Update user account
-        $userData = [
-            'email' => $this->request->getPost('email')
-        ];
-
-        // Update password only if provided
-        if ($this->request->getPost('password')) {
-            $userData['password'] = $this->request->getPost('password');
-        }
-
-        $userModel->update($teacher['user_id'], $userData);
-
-        // Update teacher record
-        $teacherData = [
-            'teacher_id' => $this->request->getPost('teacher_id'),
-            'first_name' => $this->request->getPost('first_name'),
-            'last_name' => $this->request->getPost('last_name'),
-            'gender' => $this->request->getPost('gender'),
-            'date_of_birth' => $this->request->getPost('date_of_birth'),
-            'contact_number' => $this->request->getPost('contact_number'),
-            'address' => $this->request->getPost('address'),
-            'department' => $this->request->getPost('department'),
-            'position' => $this->request->getPost('position'),
-            'specialization' => $this->request->getPost('specialization'),
-            'hire_date' => $this->request->getPost('hire_date'),
-            'employment_status' => $this->request->getPost('employment_status')
-        ];
-
-        if ($teacherModel->update($teacherId, $teacherData)) {
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Teacher updated successfully.'
-            ]);
-        } else {
-            return $this->response->setJSON([
-                'success' => false,
-                'error' => 'Failed to update teacher record.'
+                'error' => 'Server error occurred.'
             ]);
         }
     }
+
+
 
     /**
      * Delete teacher
@@ -338,6 +326,38 @@ class Teachers extends BaseController
     }
 
     /**
+     * View teacher details as full page
+     */
+    public function viewTeacher($teacherId)
+    {
+        if (!auth()->user()->inGroup('admin')) {
+            return redirect()->to(base_url('/'));
+        }
+
+        $teacherModel = model(TeacherModel::class);
+        $sectionModel = model(SectionModel::class);
+
+        // Get teacher details
+        $teacher = $teacherModel->select('teachers.*, users.email')
+            ->join('users', 'users.id = teachers.user_id', 'left')
+            ->where('teachers.id', $teacherId)
+            ->first();
+
+        if (!$teacher) {
+            return redirect()->to('admin/teachers')->with('error', 'Teacher not found');
+        }
+
+        // Get sections assigned to this teacher
+        $sections = $sectionModel->where('adviser_id', $teacherId)->findAll();
+
+        return view('admin/teacher_view', [
+            'title' => 'Teacher Details - LPHS SMS',
+            'teacher' => $teacher,
+            'sections' => $sections
+        ]);
+    }
+
+    /**
      * Get teacher details for modal display
      */
     public function details($teacherId)
@@ -358,10 +378,11 @@ class Teachers extends BaseController
         $teacherModel = model(TeacherModel::class);
         $sectionModel = model(SectionModel::class);
 
-        // Get teacher details
+        // Get teacher details - using WHERE clause instead of find()
         $teacher = $teacherModel->select('teachers.*, users.email')
-            ->join('users', 'users.id = teachers.user_id', 'inner')
-            ->find($teacherId);
+            ->join('users', 'users.id = teachers.user_id', 'left')
+            ->where('teachers.id', $teacherId)
+            ->first();
 
         if (!$teacher) {
             return $this->response->setStatusCode(404)->setJSON(['error' => 'Teacher not found']);
@@ -374,5 +395,89 @@ class Teachers extends BaseController
             'teacher' => $teacher,
             'sections' => $sections
         ]);
+    }
+
+    /**
+     * Manage teacher schedule
+     */
+    public function schedule($teacherId)
+    {
+        if (!auth()->user()->inGroup('admin')) {
+            return redirect()->to(base_url('/'));
+        }
+
+        $teacherModel = model(TeacherModel::class);
+        $scheduleModel = model(TeacherScheduleModel::class);
+        $subjectModel = model(SubjectModel::class);
+        $sectionModel = model(SectionModel::class);
+
+        $teacher = $teacherModel->find($teacherId);
+        if (!$teacher) {
+            return redirect()->to('admin/teachers')->with('error', 'Teacher not found');
+        }
+
+        $schedules = $scheduleModel->getTeacherSchedule($teacherId);
+        $subjects = $subjectModel->findAll();
+        $allSections = $sectionModel->select('id, section_name, grade_level')
+                                    ->where('is_active', true)
+                                    ->findAll();
+        
+        // Remove duplicates by creating unique key
+        $uniqueSections = [];
+        $sections = [];
+        foreach ($allSections as $section) {
+            $key = $section['section_name'] . '_' . $section['grade_level'];
+            if (!isset($uniqueSections[$key])) {
+                $uniqueSections[$key] = true;
+                $sections[] = $section;
+            }
+        }
+
+        return view('admin/teacher_schedule', [
+            'title' => 'Manage Schedule - ' . $teacher['first_name'] . ' ' . $teacher['last_name'],
+            'teacher' => $teacher,
+            'schedules' => $schedules,
+            'subjects' => $subjects,
+            'sections' => $sections
+        ]);
+    }
+
+    /**
+     * Save teacher schedule
+     */
+    public function saveSchedule($teacherId)
+    {
+        if (!auth()->user()->inGroup('admin')) {
+            return $this->response->setJSON(['success' => false, 'error' => 'Unauthorized']);
+        }
+
+        $scheduleModel = model(TeacherScheduleModel::class);
+        
+        // Get JSON data from request body
+        $input = $this->request->getJSON(true);
+        $schedules = $input['schedules'] ?? [];
+
+        if (empty($schedules)) {
+            return $this->response->setJSON(['success' => false, 'error' => 'No schedule data provided']);
+        }
+
+        // Delete existing schedules
+        $scheduleModel->where('teacher_id', $teacherId)->delete();
+
+        // Insert new schedules
+        foreach ($schedules as $schedule) {
+            $scheduleModel->insert([
+                'teacher_id' => $teacherId,
+                'subject_id' => $schedule['subject_id'],
+                'section_id' => $schedule['section_id'],
+                'day_of_week' => $schedule['day_of_week'],
+                'start_time' => $schedule['start_time'],
+                'end_time' => $schedule['end_time'],
+                'room' => $schedule['room'] ?? null,
+                'school_year' => '2024-2025'
+            ]);
+        }
+
+        return $this->response->setJSON(['success' => true, 'message' => 'Schedule saved successfully']);
     }
 }

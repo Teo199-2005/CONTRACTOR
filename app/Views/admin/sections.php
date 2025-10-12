@@ -177,6 +177,9 @@
                       <button class="btn btn-outline-primary" onclick="viewSectionStudents(<?= $section['id'] ?>)" title="View Students">
                         <i class="bi bi-people"></i>
                       </button>
+                      <button class="btn btn-outline-info" onclick="assignStudents(<?= $section['id'] ?>, '<?= esc($section['section_name']) ?>', <?= $section['grade_level'] ?>)" title="Assign Students">
+                        <i class="bi bi-person-plus-fill"></i>
+                      </button>
                       <button class="btn btn-outline-secondary" onclick="editSection(<?= $section['id'] ?>)" title="Edit Section">
                         <i class="bi bi-pencil"></i>
                       </button>
@@ -208,7 +211,19 @@
 <!-- Section Students Modal is generated dynamically and appended to <body> by JS -->
 
 <style>
-/* No page-scoped modal overrides needed; using Bootstrap defaults */</style>
+/* Custom styling for assign students modal close button */
+#assignStudentsModal .modal-footer .btn-danger {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+}
+
+#assignStudentsModal .modal-footer .btn-danger:hover {
+  background-color: #c82333 !important;
+  border-color: #c82333 !important;
+  color: white !important;
+}
+</style>
 
 <script>
 // Store sections data for quick access
@@ -230,7 +245,7 @@ function buildAssignAdviserModal({ sectionId, sectionName, gradeLevel }) {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <form id="assignAdviserForm" method="post" action="<?= base_url('admin/sections/assign-adviser/') ?>${sectionId}">
-          <?= str_replace(array("\n","\r"), '', csrf_field()) ?>
+          <?= csrf_field() ?>
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label fw-semibold">Section Information</label>
@@ -262,6 +277,7 @@ function buildAssignAdviserModal({ sectionId, sectionName, gradeLevel }) {
             </div>
           </div>
           <div class="modal-footer">
+            <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
             <button type="submit" class="btn btn-success">
               <i class="bi bi-person-check"></i> Assign Adviser
             </button>
@@ -283,22 +299,73 @@ function assignAdviser(sectionId, sectionName, gradeLevel) {
 
 
 function removeAdviser(sectionId) {
-  if (confirm('Are you sure you want to remove the adviser from this section?')) {
-    // Create a form and submit
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = `<?= base_url('admin/sections/remove-adviser/') ?>${sectionId}`;
-
-    // Add CSRF token
-    const csrfInput = document.createElement('input');
-    csrfInput.type = 'hidden';
-    csrfInput.name = '<?= csrf_token() ?>';
-    csrfInput.value = '<?= csrf_hash() ?>';
-    form.appendChild(csrfInput);
-
-    document.body.appendChild(form);
-    form.submit();
+  const section = sectionsData.find(s => s.id == sectionId);
+  if (!section) {
+    alert('Section not found.');
+    return;
   }
+  
+  const modalEl = buildRemoveAdviserModal(section);
+  const modal = new bootstrap.Modal(modalEl, { backdrop: true, keyboard: true, focus: true });
+  modal.show();
+}
+
+function buildRemoveAdviserModal(section) {
+  const existing = document.getElementById('removeAdviserModal');
+  if (existing) existing.remove();
+
+  const html = `
+  <div class="modal fade" id="removeAdviserModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Remove Section Adviser</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Warning:</strong> This action will remove the adviser from this section.
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Section Information</label>
+            <div class="p-3 bg-light rounded">
+              <h6 class="mb-1">${section.section_name}</h6>
+              <small class="text-muted">Grade ${section.grade_level} • ${section.school_year}</small>
+              <br><small class="text-success">Current Adviser: ${section.adviser_name || 'Unknown'}</small>
+            </div>
+          </div>
+          <p>Are you sure you want to remove the adviser from this section?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" onclick="confirmRemoveAdviser(${section.id})">
+            <i class="bi bi-person-x me-1"></i> Remove Adviser
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  
+  document.body.insertAdjacentHTML('beforeend', html);
+  return document.getElementById('removeAdviserModal');
+}
+
+function confirmRemoveAdviser(sectionId) {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `<?= base_url('admin/sections/remove-adviser/') ?>${sectionId}`;
+
+  const csrfInput = document.createElement('input');
+  csrfInput.type = 'hidden';
+  csrfInput.name = '<?= csrf_token() ?>';
+  csrfInput.value = '<?= csrf_hash() ?>';
+  form.appendChild(csrfInput);
+
+  document.body.appendChild(form);
+  form.submit();
+  
+  bootstrap.Modal.getInstance(document.getElementById('removeAdviserModal')).hide();
 }
 
 
@@ -476,6 +543,340 @@ function editSection(sectionId) {
   const modalEl = buildEditSectionModal(section);
   const modal = new bootstrap.Modal(modalEl, { backdrop: true, keyboard: true, focus: true });
   modal.show();
+}
+
+// Handle assign adviser form submission
+document.addEventListener('submit', function(e) {
+  if (e.target.id === 'assignAdviserForm') {
+    e.preventDefault();
+    
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    const adviserId = form.querySelector('#teacherSelect').value;
+    
+    if (!adviserId) {
+      alert('Please select a teacher to assign as adviser.');
+      return;
+    }
+    
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Assigning...';
+    submitBtn.disabled = true;
+    
+    const formData = new FormData(form);
+    
+    fetch(form.action, {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.text();
+    })
+    .then(html => {
+      // Check if response contains success or error message
+      if (html.includes('alert-success') || html.includes('successfully')) {
+        bootstrap.Modal.getInstance(document.getElementById('assignAdviserModal')).hide();
+        showNotification('Teacher successfully assigned as section adviser!', 'success');
+        setTimeout(() => location.reload(), 1000);
+      } else if (html.includes('alert-danger') || html.includes('error')) {
+        const errorMatch = html.match(/alert-danger[^>]*>([^<]+)</i);
+        const errorMsg = errorMatch ? errorMatch[1].trim() : 'Failed to assign teacher as adviser.';
+        showNotification(errorMsg, 'error');
+      } else {
+        // Fallback - reload page to show server response
+        location.reload();
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showNotification('Network error occurred. Please try again.', 'error');
+    })
+    .finally(() => {
+      submitBtn.innerHTML = originalText;
+      submitBtn.disabled = false;
+    });
+  }
+});
+
+// Show notification function
+function showNotification(message, type = 'info') {
+  const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-danger' : 'alert-info';
+  const iconClass = type === 'success' ? 'bi-check-circle' : type === 'error' ? 'bi-exclamation-triangle' : 'bi-info-circle';
+  
+  const notification = document.createElement('div');
+  notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+  notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+  notification.innerHTML = `
+    <i class="bi ${iconClass} me-2"></i>${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  // Auto-remove after 5 seconds
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.remove();
+    }
+  }, 5000);
+}
+
+function assignStudents(sectionId, sectionName, gradeLevel) {
+  const modalEl = buildAssignStudentsModal({ sectionId, sectionName, gradeLevel });
+  const modal = new bootstrap.Modal(modalEl, { backdrop: true, keyboard: true, focus: true });
+  
+  // Show loading
+  const listEl = modalEl.querySelector('#unassignedStudentsList');
+  listEl.innerHTML = `
+    <div class="text-center">
+      <div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div>
+      <p class="mt-2">Loading unassigned students...</p>
+    </div>
+  `;
+  
+  modal.show();
+  
+  // Fetch unassigned students for this grade level
+  fetch(`<?= base_url('admin/sections/unassigned-students/') ?>${gradeLevel}`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        displayUnassignedStudents(data.students, sectionId);
+      } else {
+        listEl.innerHTML = `
+          <div class="alert alert-info">
+            <i class="bi bi-info-circle"></i> ${data.message || 'No unassigned students found for this grade level'}
+          </div>
+        `;
+      }
+    })
+    .catch(error => {
+      listEl.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle"></i> Error loading students: ${error.message}
+        </div>
+      `;
+    });
+}
+
+function buildAssignStudentsModal({ sectionId, sectionName, gradeLevel }) {
+  const existing = document.getElementById('assignStudentsModal');
+  if (existing) existing.remove();
+  
+  const html = `
+  <div class="modal fade" id="assignStudentsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Assign Students to ${sectionName}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <div class="p-3 bg-light rounded">
+            <h6 class="mb-1">${sectionName}</h6>
+            <small class="text-muted">Grade ${gradeLevel} • Unassigned students only</small>
+          </div>
+        </div>
+        <div id="unassignedStudentsList"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="assignSelectedStudents(${sectionId})">
+          <i class="bi bi-person-check"></i> Assign Selected
+        </button>
+      </div>
+    </div></div>
+  </div>`;
+  
+  document.body.insertAdjacentHTML('beforeend', html);
+  return document.getElementById('assignStudentsModal');
+}
+
+function displayUnassignedStudents(students, sectionId) {
+  const listEl = document.getElementById('unassignedStudentsList');
+  
+  if (students.length === 0) {
+    listEl.innerHTML = `
+      <div class="text-center py-4">
+        <i class="bi bi-people fs-1 text-muted mb-3"></i>
+        <h6 class="text-muted">No unassigned students</h6>
+        <p class="text-muted">All students in this grade level are already assigned to sections.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  let studentsHtml = `
+    <div class="mb-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="selectAllStudents" onchange="toggleAllStudents()">
+        <label class="form-check-label fw-semibold" for="selectAllStudents">
+          Select All (${students.length} students)
+        </label>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th width="50">Select</th>
+            <th>LRN</th>
+            <th>Name</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+  
+  students.forEach(student => {
+    studentsHtml += `
+      <tr>
+        <td>
+          <div class="form-check">
+            <input class="form-check-input student-checkbox" type="checkbox" value="${student.id}" id="student_${student.id}">
+          </div>
+        </td>
+        <td>${student.lrn || 'N/A'}</td>
+        <td>${student.first_name} ${student.last_name}</td>
+        <td><span class="badge bg-warning">Unassigned</span></td>
+      </tr>
+    `;
+  });
+  
+  studentsHtml += `
+        </tbody>
+      </table>
+    </div>
+  `;
+  
+  listEl.innerHTML = studentsHtml;
+}
+
+function toggleAllStudents() {
+  const selectAll = document.getElementById('selectAllStudents');
+  const checkboxes = document.querySelectorAll('.student-checkbox');
+  
+  checkboxes.forEach(checkbox => {
+    checkbox.checked = selectAll.checked;
+  });
+}
+
+function assignSelectedStudents(sectionId) {
+  const selectedStudents = Array.from(document.querySelectorAll('.student-checkbox:checked')).map(cb => cb.value);
+  
+  if (selectedStudents.length === 0) {
+    showStyledAlert('Please select at least one student to assign.', 'warning');
+    return;
+  }
+  
+  showConfirmationModal(
+    'Confirm Assignment',
+    `Are you sure you want to assign ${selectedStudents.length} student(s) to this section?`,
+    () => {
+      // Send assignment request
+      fetch(`<?= base_url('admin/sections/assign-students/') ?>${sectionId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+        },
+        body: JSON.stringify({ student_ids: selectedStudents })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          bootstrap.Modal.getInstance(document.getElementById('assignStudentsModal')).hide();
+          showNotification(data.message || 'Students assigned successfully!', 'success');
+          setTimeout(() => location.reload(), 1000);
+        } else {
+          showNotification(data.message || 'Failed to assign students', 'error');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showNotification('Network error occurred. Please try again.', 'error');
+      });
+    }
+  );
+}
+
+function showStyledAlert(message, type = 'info') {
+  const alertClass = type === 'warning' ? 'alert-warning' : type === 'error' ? 'alert-danger' : 'alert-info';
+  const iconClass = type === 'warning' ? 'bi-exclamation-triangle' : type === 'error' ? 'bi-x-circle' : 'bi-info-circle';
+  
+  const modalHtml = `
+  <div class="modal fade" id="styledAlertModal" tabindex="-1" style="z-index: 999999;">
+    <div class="modal-dialog modal-sm">
+      <div class="modal-content">
+        <div class="modal-body text-center p-4">
+          <div class="${alertClass} border-0 mb-3">
+            <i class="${iconClass} fs-2 mb-2"></i>
+            <p class="mb-0">${message}</p>
+          </div>
+          <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  
+  const existing = document.getElementById('styledAlertModal');
+  if (existing) existing.remove();
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  const modal = new bootstrap.Modal(document.getElementById('styledAlertModal'));
+  modal.show();
+  document.body.style.overflow = 'hidden';
+}
+
+function showConfirmationModal(title, message, onConfirm) {
+  const modalHtml = `
+  <div class="modal fade" id="confirmationModal" tabindex="-1" style="z-index: 999999;">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">${title}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-warning border-0">
+            <i class="bi bi-question-circle fs-2 mb-2 d-block text-center"></i>
+            <p class="text-center mb-0">${message}</p>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="confirmAction()">Yes, Assign</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  
+  const existing = document.getElementById('confirmationModal');
+  if (existing) existing.remove();
+  
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  window.confirmAction = () => {
+    bootstrap.Modal.getInstance(document.getElementById('confirmationModal')).hide();
+    document.body.style.overflow = '';
+    onConfirm();
+  };
+  
+  const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+  modal.show();
+  document.body.style.overflow = 'hidden';
+  
+  // Handle modal close events
+  document.getElementById('confirmationModal').addEventListener('hidden.bs.modal', () => {
+    document.body.style.overflow = '';
+  });
 }
 
 function showCreateSection() {

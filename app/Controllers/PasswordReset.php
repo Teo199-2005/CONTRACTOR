@@ -26,12 +26,12 @@ class PasswordReset extends BaseController
     }
 
     /**
-     * Handle forgot password form submission
+     * Verify identity with PRC license or LRN
      */
-    public function sendResetInstructions()
+    public function verifyIdentity()
     {
         $rules = [
-            'email' => 'required|valid_email'
+            'identifier' => 'required|min_length[3]'
         ];
 
         if (!$this->validate($rules)) {
@@ -40,40 +40,142 @@ class PasswordReset extends BaseController
             ]);
         }
 
-        $email = $this->request->getPost('email');
+        $identifier = $this->request->getPost('identifier');
         
-        // Check if user exists
-        $user = $this->userModel->where('email', $email)->first();
+        // Check if it's a teacher (PRC license) or student (LRN)
+        $teacherModel = model('TeacherModel');
+        $studentModel = model('StudentModel');
         
-        if (!$user) {
-            return redirect()->back()
-                ->with('error', 'No account found with that email address.');
+        $teacher = $teacherModel->where('license_number', $identifier)->first();
+        $student = $studentModel->where('lrn', $identifier)->first();
+        
+        if ($teacher) {
+            $user = $this->userModel->find($teacher['user_id']);
+            if ($user) {
+                session()->set('reset_user_id', $user->id);
+                session()->set('reset_user_type', 'teacher');
+                return view('auth/reset_password_form', ['user_type' => 'teacher']);
+            }
+        } elseif ($student) {
+            $user = $this->userModel->find($student['user_id']);
+            if ($user) {
+                session()->set('reset_user_id', $user->id);
+                session()->set('reset_user_type', 'student');
+                return view('auth/reset_password_form', ['user_type' => 'student']);
+            }
         }
-
-        // Check if user is a student (only students can request password reset)
-        if (!$user->inGroup('student')) {
-            return redirect()->back()
-                ->with('error', 'Password reset is only available for student accounts. Please contact the administrator for assistance.');
-        }
-
-        // Generate reset token
-        $token = bin2hex(random_bytes(32));
-        $expiresAt = date('Y-m-d H:i:s', strtotime('+24 hours'));
-
-        // Save reset request
-        $this->resetRequestModel->insert([
-            'user_id' => $user->id,
-            'email' => $email,
-            'token' => $token,
-            'expires_at' => $expiresAt,
-            'status' => 'pending',
-            'created_at' => date('Y-m-d H:i:s')
-        ]);
-
-        // In a real application, you would send an email here
-        // For now, we'll just show a success message
+        
         return redirect()->back()
-            ->with('success', 'Password reset request submitted successfully. An administrator will review your request and contact you with further instructions.');
+            ->with('error', 'No account found with that PRC license number or LRN.');
+    }
+
+    /**
+     * Debug endpoint to check users (remove in production)
+     */
+    public function debugUsers()
+    {
+        if (ENVIRONMENT !== 'development') {
+            throw new \CodeIgniter\Exceptions\PageNotFoundException();
+        }
+        
+        $users = $this->userModel->select('id, email, active, created_at')->findAll();
+        
+        echo '<h3>Users in system:</h3>';
+        echo '<table border="1" style="border-collapse: collapse; padding: 5px;">';
+        echo '<tr><th>ID</th><th>Email</th><th>Active</th><th>Created</th></tr>';
+        foreach ($users as $user) {
+            echo '<tr>';
+            echo '<td>' . $user['id'] . '</td>';
+            echo '<td>' . $user['email'] . '</td>';
+            echo '<td>' . ($user['active'] ? 'Yes' : 'No') . '</td>';
+            echo '<td>' . $user['created_at'] . '</td>';
+            echo '</tr>';
+        }
+        echo '</table>';
+        
+        // Also check students table
+        $studentModel = model('StudentModel');
+        $students = $studentModel->select('id, email, first_name, last_name, enrollment_status')->findAll();
+        
+        echo '<h3>Students in system:</h3>';
+        echo '<table border="1" style="border-collapse: collapse; padding: 5px;">';
+        echo '<tr><th>ID</th><th>Email</th><th>Name</th><th>Status</th></tr>';
+        foreach ($students as $student) {
+            echo '<tr>';
+            echo '<td>' . $student['id'] . '</td>';
+            echo '<td>' . ($student['email'] ?? 'N/A') . '</td>';
+            echo '<td>' . $student['first_name'] . ' ' . $student['last_name'] . '</td>';
+            echo '<td>' . $student['enrollment_status'] . '</td>';
+            echo '</tr>';
+        }
+        echo '</table>';
+    }
+
+    /**
+     * Handle password change form submission
+     */
+    public function changePassword()
+    {
+        $rules = [
+            'current_password' => 'required',
+            'new_password' => 'required|min_length[8]',
+            'confirm_password' => 'required|matches[new_password]'
+        ];
+
+        if (!$this->validate($rules)) {
+            $userType = session()->get('reset_user_type');
+            return view('auth/reset_password_form', [
+                'user_type' => $userType,
+                'validation' => $this->validator
+            ]);
+        }
+
+        $userId = session()->get('reset_user_id');
+        $currentPassword = $this->request->getPost('current_password');
+        $newPassword = $this->request->getPost('new_password');
+
+        if (!$userId) {
+            return redirect()->to('forgot-password')
+                ->with('error', 'Session expired. Please start over.');
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return redirect()->to('forgot-password')
+                ->with('error', 'User not found.');
+        }
+
+        // Verify current password using Shield's authentication
+        $db = \Config\Database::connect();
+        $identity = $db->table('auth_identities')
+            ->where('user_id', $userId)
+            ->where('type', 'email_password')
+            ->get()
+            ->getRow();
+            
+        if (!$identity || !password_verify($currentPassword, $identity->secret)) {
+            $userType = session()->get('reset_user_type');
+            return view('auth/reset_password_form', [
+                'user_type' => $userType,
+                'error' => 'Current password is incorrect.'
+            ]);
+        }
+
+        // Update password in auth_identities table
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $updated = $db->table('auth_identities')
+            ->where('user_id', $userId)
+            ->where('type', 'email_password')
+            ->update(['secret' => $hashedPassword]);
+            
+        if ($updated) {
+            session()->remove(['reset_user_id', 'reset_user_type']);
+            return redirect()->to('login')
+                ->with('success', 'Password updated successfully. You can now login with your new password.');
+        }
+
+        return redirect()->back()
+            ->with('error', 'Failed to update password. Please try again.');
     }
 
     /**

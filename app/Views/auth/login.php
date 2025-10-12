@@ -305,7 +305,7 @@
       <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="border-radius: 12px;">
         <li><a class="dropdown-item" href="<?= base_url('login/demo/admin') ?>">Login as Admin</a></li>
         <li><a class="dropdown-item" href="<?= base_url('login/demo/teacher') ?>">Login as Teacher</a></li>
-        <li><a class="dropdown-item" href="<?= base_url('login/demo/newstudent') ?>">Login as New Student</a></li>
+        <li><a class="dropdown-item" href="<?= base_url('login/demo/student') ?>">Login as Student</a></li>
       </ul>
     </div>
   </div>
@@ -344,13 +344,17 @@
         <?= csrf_field() ?>
         
         <div class="mb-3">
-          <input type="email" class="form-control" id="email" name="email"
-                 placeholder="name@example.com" value="<?= old('email') ?>" required>
+          <input type="text" class="form-control" id="identifier" name="identifier"
+                 placeholder="PRC License Number or LRN" value="<?= old('identifier') ?>" required>
         </div>
 
-        <div class="mb-3">
+        <div class="mb-3 position-relative">
           <input type="password" class="form-control" id="password" name="password"
                  placeholder="Password" required>
+          <button type="button" class="btn position-absolute" id="togglePassword" 
+                  style="right: 10px; top: 50%; transform: translateY(-50%); border: none; background: none; color: #6b7280; z-index: 10;">
+            <i class="bi bi-eye" id="toggleIcon"></i>
+          </button>
         </div>
 
         <div class="remember-section">
@@ -375,6 +379,27 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        if (type === 'text') {
+            toggleIcon.classList.remove('bi-eye');
+            toggleIcon.classList.add('bi-eye-slash');
+        } else {
+            toggleIcon.classList.remove('bi-eye-slash');
+            toggleIcon.classList.add('bi-eye');
+        }
+    });
+});
+</script>
 
 <?= $this->endSection() ?>
 

@@ -38,15 +38,14 @@
               $notificationsHref = base_url('admin/notifications');
               $navMain = [
                 ['href' => base_url('admin/dashboard'), 'icon' => 'bi-speedometer2', 'label' => 'Dashboard'],
-                ['href' => base_url('admin/enrollments'), 'icon' => 'bi-person-check', 'label' => 'Enrollments'],
+                ['href' => base_url('admin/students/pending'), 'icon' => 'bi-clock-history', 'label' => 'Pending Applications', 'badge' => 'pending-applications-count'],
                 ['href' => base_url('admin/students'), 'icon' => 'bi-people-fill', 'label' => 'Students'],
                 ['href' => base_url('admin/teachers'), 'icon' => 'bi-person-video3', 'label' => 'Teachers'],
                 ['href' => base_url('admin/sections'), 'icon' => 'bi-grid-3x3-gap', 'label' => 'Sections & Subjects'],
                 ['href' => base_url('admin/analytics'), 'icon' => 'bi-graph-up', 'label' => 'Analytics'],
                 ['href' => base_url('admin/announcements'), 'icon' => 'bi-megaphone', 'label' => 'Announcements'],
                 ['href' => base_url('admin/notifications'), 'icon' => 'bi-bell', 'label' => 'Notifications'],
-                ['href' => base_url('admin/password-resets'), 'icon' => 'bi-key', 'label' => 'Password Resets', 'badge' => 'password-reset-count'],
-                ['href' => base_url('admin/users'), 'icon' => 'bi-people', 'label' => 'Users & Roles'],
+
               ];
             } elseif ($user->inGroup('teacher')) {
               $role = 'teacher';
@@ -58,7 +57,9 @@
                 ['href' => base_url('teacher/dashboard'), 'icon' => 'bi-speedometer2', 'label' => 'Dashboard'],
                 ['href' => base_url('teacher/students'), 'icon' => 'bi-people-fill', 'label' => 'My Students'],
                 ['href' => base_url('teacher/grades'), 'icon' => 'bi-bar-chart-line', 'label' => 'Enter Grades'],
+                ['href' => base_url('teacher/attendance'), 'icon' => 'bi-calendar-check', 'label' => 'Attendance'],
                 ['href' => base_url('teacher/schedule'), 'icon' => 'bi-calendar-event', 'label' => 'My Schedule'],
+                ['href' => base_url('teacher/analytics'), 'icon' => 'bi-graph-up', 'label' => 'Analytics'],
                 ['href' => base_url('teacher/announcements'), 'icon' => 'bi-megaphone', 'label' => 'Announcements'],
               ];
             } elseif ($user->inGroup('parent')) {
@@ -243,13 +244,15 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Load password reset count for admin users
+    // Load password reset count and pending applications count for admin users
     <?php if (auth()->user() && auth()->user()->inGroup('admin')): ?>
-    function loadPasswordResetCount() {
-      fetch('<?= base_url('admin/password-resets/count') ?>')
+
+
+    function loadPendingApplicationsCount() {
+      fetch('<?= base_url('admin/students/pending-count') ?>')
         .then(response => response.json())
         .then(data => {
-          const badge = document.getElementById('password-reset-count');
+          const badge = document.getElementById('pending-applications-count');
           if (badge && data.count > 0) {
             badge.textContent = data.count;
             badge.style.display = 'inline-block';
@@ -257,14 +260,18 @@
             badge.style.display = 'none';
           }
         })
-        .catch(error => console.error('Error loading password reset count:', error));
+        .catch(error => console.error('Error loading pending applications count:', error));
     }
 
-    // Load count on page load
-    document.addEventListener('DOMContentLoaded', loadPasswordResetCount);
+    // Load counts on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadPendingApplicationsCount();
+    });
 
-    // Refresh count every 30 seconds
-    setInterval(loadPasswordResetCount, 30000);
+    // Refresh counts every 30 seconds
+    setInterval(function() {
+      loadPendingApplicationsCount();
+    }, 30000);
     <?php endif; ?>
   </script>
   <script>

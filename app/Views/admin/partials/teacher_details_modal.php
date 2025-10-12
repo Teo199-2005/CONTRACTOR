@@ -67,9 +67,14 @@
   color: #991b1b;
 }
 
-.status-on_leave {
+.status-resigned {
   background-color: #fef3c7;
   color: #92400e;
+}
+
+.status-terminated {
+  background-color: #fee2e2;
+  color: #991b1b;
 }
 
 .sections-list {
@@ -103,9 +108,9 @@
         </div>
       </div>
       <div class="teacher-info-item">
-        <div class="teacher-info-label">Teacher ID</div>
+        <div class="teacher-info-label">PRC License Number</div>
         <div class="teacher-info-value">
-          <?= esc($teacher['teacher_id']) ?: 'N/A' ?>
+          <?= esc($teacher['license_number']) ?: 'N/A' ?>
         </div>
       </div>
       <div class="teacher-info-item">
@@ -155,9 +160,9 @@
         </div>
       </div>
       <div class="teacher-info-item">
-        <div class="teacher-info-label">Hire Date</div>
+        <div class="teacher-info-label">Date Hired</div>
         <div class="teacher-info-value">
-          <?= $teacher['hire_date'] ? date('F j, Y', strtotime($teacher['hire_date'])) : '—' ?>
+          <?= $teacher['date_hired'] ? date('F j, Y', strtotime($teacher['date_hired'])) : '—' ?>
         </div>
       </div>
       <div class="teacher-info-item">

@@ -11,68 +11,63 @@ class PasswordResetRequestModel extends Model
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
-
+    protected $protectFields = true;
     protected $allowedFields = [
-        'user_id', 'email', 'token', 'expires_at', 'status', 
-        'approved_by', 'approved_at', 'used_at', 'admin_notes'
+        'user_id',
+        'email',
+        'token',
+        'expires_at',
+        'status',
+        'used_at',
+        'approved_by',
+        'admin_notes',
+        'created_at',
+        'updated_at'
     ];
 
-    protected $useTimestamps = true;
+    protected $useTimestamps = false;
+    protected $dateFormat = 'datetime';
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';
+    protected $deletedField = 'deleted_at';
 
-    protected $validationRules = [
-        'user_id' => 'required|integer',
-        'email' => 'required|valid_email',
-        'token' => 'required|min_length[32]',
-        'expires_at' => 'required|valid_date',
-        'status' => 'required|in_list[pending,approved,rejected,used,expired]'
-    ];
+    protected $validationRules = [];
+    protected $validationMessages = [];
+    protected $skipValidation = false;
+    protected $cleanValidationRules = true;
 
-    protected $validationMessages = [
-        'user_id' => [
-            'required' => 'User ID is required',
-            'integer' => 'User ID must be a valid integer'
-        ],
-        'email' => [
-            'required' => 'Email is required',
-            'valid_email' => 'Email must be a valid email address'
-        ],
-        'token' => [
-            'required' => 'Token is required',
-            'min_length' => 'Token must be at least 32 characters long'
-        ],
-        'status' => [
-            'required' => 'Status is required',
-            'in_list' => 'Status must be one of: pending, approved, rejected, used, expired'
-        ]
-    ];
-
-    /**
-     * Get pending password reset requests for admin review
-     */
-    public function getPendingRequests()
-    {
-        return $this->select('password_reset_requests.*, users.email as user_email, students.first_name, students.last_name, students.student_id')
-            ->join('users', 'users.id = password_reset_requests.user_id')
-            ->join('students', 'students.user_id = users.id', 'left')
-            ->where('password_reset_requests.status', 'pending')
-            ->where('password_reset_requests.expires_at >', date('Y-m-d H:i:s'))
-            ->orderBy('password_reset_requests.created_at', 'DESC')
-            ->findAll();
-    }
+    protected $allowCallbacks = true;
+    protected $beforeInsert = [];
+    protected $afterInsert = [];
+    protected $beforeUpdate = [];
+    protected $afterUpdate = [];
+    protected $beforeFind = [];
+    protected $afterFind = [];
+    protected $beforeDelete = [];
+    protected $afterDelete = [];
 
     /**
      * Get all password reset requests with user details
      */
     public function getAllRequestsWithDetails()
     {
-        return $this->select('password_reset_requests.*, users.email as user_email, students.first_name, students.last_name, students.student_id, admin_users.email as approved_by_email')
+        return $this->select('password_reset_requests.*, auth_identities.secret as user_email, students.first_name, students.last_name, students.lrn as student_id')
             ->join('users', 'users.id = password_reset_requests.user_id')
+            ->join('auth_identities', 'auth_identities.user_id = users.id AND auth_identities.type = "email_password"', 'left')
             ->join('students', 'students.user_id = users.id', 'left')
-            ->join('users as admin_users', 'admin_users.id = password_reset_requests.approved_by', 'left')
             ->orderBy('password_reset_requests.created_at', 'DESC')
             ->findAll();
+    }
+
+    /**
+     * Mark expired requests as expired
+     */
+    public function markExpiredRequests()
+    {
+        return $this->where('expires_at <', date('Y-m-d H:i:s'))
+            ->where('status', 'pending')
+            ->set('status', 'expired')
+            ->update();
     }
 
     /**
@@ -83,8 +78,8 @@ class PasswordResetRequestModel extends Model
         return $this->update($requestId, [
             'status' => 'approved',
             'approved_by' => $adminId,
-            'approved_at' => date('Y-m-d H:i:s'),
-            'admin_notes' => $notes
+            'admin_notes' => $notes,
+            'updated_at' => date('Y-m-d H:i:s')
         ]);
     }
 
@@ -96,19 +91,8 @@ class PasswordResetRequestModel extends Model
         return $this->update($requestId, [
             'status' => 'rejected',
             'approved_by' => $adminId,
-            'approved_at' => date('Y-m-d H:i:s'),
-            'admin_notes' => $notes
+            'admin_notes' => $notes,
+            'updated_at' => date('Y-m-d H:i:s')
         ]);
-    }
-
-    /**
-     * Mark expired requests
-     */
-    public function markExpiredRequests()
-    {
-        return $this->where('expires_at <', date('Y-m-d H:i:s'))
-            ->where('status', 'pending')
-            ->set(['status' => 'expired'])
-            ->update();
     }
 }

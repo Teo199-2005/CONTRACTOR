@@ -13,10 +13,10 @@ class TeacherModel extends Model
     protected $useSoftDeletes = true;
     protected $protectFields = true;
     protected $allowedFields = [
-        'employee_id', 'user_id', 'first_name', 'middle_name', 'last_name', 'suffix',
+        'teacher_id', 'user_id', 'first_name', 'middle_name', 'last_name', 'suffix',
         'gender', 'date_of_birth', 'contact_number', 'email', 'address',
-        'department', 'position', 'specialization', 'hire_date',
-        'employment_status', 'photo_path'
+        'department', 'position', 'specialization', 'date_hired',
+        'employment_status', 'photo_path', 'license_number'
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -34,13 +34,14 @@ class TeacherModel extends Model
 
     // Validation
     protected $validationRules = [
-        'teacher_id' => 'required|is_unique[teachers.teacher_id,id,{id}]',
+        'teacher_id' => 'permit_empty|is_unique[teachers.teacher_id,id,{id}]',
         'first_name' => 'required|max_length[100]',
         'last_name' => 'required|max_length[100]',
         'gender' => 'required|in_list[Male,Female]',
         'email' => 'required|valid_email|is_unique[teachers.email,id,{id}]',
         'employment_status' => 'in_list[active,inactive,resigned,terminated]',
-        'position' => 'max_length[100]'
+        'position' => 'max_length[100]',
+        'license_number' => 'permit_empty|max_length[20]'
     ];
     protected $validationMessages = [];
     protected $skipValidation = false;
@@ -139,7 +140,12 @@ class TeacherModel extends Model
      */
     public function getAvailableAdvisers()
     {
-        return $this->where('employment_status', 'active')
-            ->findAll();
+        // Get all active teachers (since none are currently assigned)
+        return $this->select('id, first_name, last_name, email, license_number')
+                   ->where('employment_status', 'active')
+                   ->where('deleted_at IS NULL')
+                   ->orderBy('first_name', 'ASC')
+                   ->orderBy('last_name', 'ASC')
+                   ->findAll();
     }
 }

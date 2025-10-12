@@ -28,9 +28,9 @@ $routes->get('uploads/enrollment_documents/(:any)', 'FileController::serveEnroll
 
 // Password reset routes
 $routes->get('forgot-password', 'PasswordReset::forgotPassword');
-$routes->post('forgot-password', 'PasswordReset::sendResetInstructions');
-$routes->get('reset-password/(:any)', 'PasswordReset::resetPassword/$1');
-$routes->post('reset-password', 'PasswordReset::updatePassword');
+$routes->post('verify-identity', 'PasswordReset::verifyIdentity');
+$routes->post('change-password', 'PasswordReset::changePassword');
+$routes->get('debug/users', 'PasswordReset::debugUsers');
 
 // CodeIgniter Shield routes (for additional auth features)
 // Temporarily disabled to avoid conflicts with custom auth
@@ -50,21 +50,40 @@ $routes->group('admin', [], static function ($routes) {
     $routes->post('students/update/(:num)', 'Admin\Students::update/$1');
     $routes->delete('students/delete/(:num)', 'Admin\Students::delete/$1');
     $routes->get('students/details/(:num)', 'Admin\Students::getStudentDetails/$1');
+    $routes->get('students/view/(:num)', 'Admin\Students::viewStudent/$1');
+    $routes->post('students/update-password/(:num)', 'Admin\Students::updatePassword/$1');
+    $routes->get('students/pending', 'Admin\Students::pending');
+    $routes->get('students/pending-count', 'Admin\Students::getPendingCount');
+    $routes->post('students/approve/(:num)', 'Admin\Students::approve/$1');
+    $routes->post('students/reject/(:num)', 'Admin\Students::reject/$1');
+    $routes->get('students/email-instructions', 'Admin\Students::emailInstructions');
     $routes->get('teachers', 'Admin\Teachers::index');
     $routes->get('teachers/create', 'Admin\Teachers::create');
     $routes->post('teachers/store', 'Admin\Teachers::store');
     $routes->get('teachers/edit/(:num)', 'Admin\Teachers::edit/$1');
     $routes->post('teachers/update/(:num)', 'Admin\Teachers::update/$1');
+    $routes->put('teachers/update/(:num)', 'Admin\Teachers::update/$1');
+    $routes->patch('teachers/update/(:num)', 'Admin\Teachers::update/$1');
     $routes->delete('teachers/delete/(:num)', 'Admin\Teachers::delete/$1');
     $routes->get('teachers/details/(:num)', 'Admin\Teachers::getTeacherDetails/$1');
+    $routes->get('teachers/view/(:num)', 'Admin\Teachers::viewTeacher/$1');
     $routes->get('teachers/edit-form/(:num)', 'Admin\Teachers::editForm/$1');
+    $routes->get('teachers/schedule/(:num)', 'Admin\Teachers::schedule/$1');
+    $routes->post('teachers/schedule/save/(:num)', 'Admin\Teachers::saveSchedule/$1');
     $routes->get('sections', 'Admin\Dashboard::sections');
     $routes->post('sections/assign-adviser/(:num)', 'Admin\Dashboard::assignAdviser/$1');
     $routes->post('sections/remove-adviser/(:num)', 'Admin\Dashboard::removeAdviser/$1');
     $routes->get('sections/students/(:num)', 'Admin\Dashboard::getSectionStudents/$1');
+    $routes->get('sections/unassigned-students/(:num)', 'Admin\Dashboard::getUnassignedStudents/$1');
+    $routes->post('sections/assign-students/(:num)', 'Admin\Dashboard::assignStudentsToSection/$1');
     $routes->post('sections/update/(:num)', 'Admin\Dashboard::updateSection/$1');
+    $routes->get('sections/test/(:num)', 'Admin\Dashboard::testAssignment/$1');
+    $routes->get('sections/test', 'Admin\Dashboard::testAssignment');
     $routes->get('analytics', 'Admin\Dashboard::analytics');
     $routes->get('analytics/export-pdf', 'Admin\Dashboard::exportPdf');
+    $routes->get('debug/enrollment-status', 'Admin\Dashboard::debugEnrollmentStatus');
+    $routes->post('dashboard/updateQuarter', 'Admin\Dashboard::updateQuarter');
+    $routes->post('dashboard/createAdmin', 'Admin\Dashboard::createAdmin');
     // Additional Admin Features
     $routes->get('notifications', 'Admin\Notifications::index');
     $routes->post('notifications/send', 'Admin\Notifications::send');
@@ -85,13 +104,7 @@ $routes->group('admin', [], static function ($routes) {
     $routes->post('announcements/delete/(:num)', 'Admin\Announcements::delete/$1');
     $routes->post('announcements/getStats', 'Admin\Announcements::getStats');
 
-    // Password reset management
-    $routes->get('password-resets', 'Admin\PasswordResets::index');
-    $routes->get('password-resets/count', 'Admin\PasswordResets::getCount');
-    $routes->get('password-resets/details/(:num)', 'Admin\PasswordResets::getRequestDetails/$1');
-    $routes->post('password-resets/approve/(:num)', 'Admin\PasswordResets::approve/$1');
-    $routes->post('password-resets/reject/(:num)', 'Admin\PasswordResets::reject/$1');
-    $routes->get('password-resets/reset-link/(:num)', 'Admin\PasswordResets::generateResetLink/$1');
+
 
     // Announcements AJAX management
     $routes->get('announcements/list', 'Announcements::listAjax');
@@ -108,6 +121,7 @@ $routes->group('admin', [], static function ($routes) {
     $routes->post('users/bulkDelete', 'Admin\Users::bulkDelete');
 
     $routes->get('id-cards', 'Admin\IdCards::index');
+    $routes->get('id-cards/view/(:num)', 'Admin\IdCards::viewCard/$1');
 });
 
 // Student Dashboard Routes
@@ -118,6 +132,8 @@ $routes->group('student', [], static function ($routes) {
     $routes->get('grades', 'Student\Dashboard::grades');
     $routes->get('schedule', 'Student\Dashboard::schedule');
     $routes->get('announcements', 'Student\Dashboard::announcements');
+    $routes->get('enrollment', 'Student\Dashboard::enrollment');
+    $routes->post('enrollment', 'Student\Dashboard::submitEnrollment');
     // Additional Student Features
     $routes->get('materials', 'Student\Materials::index');
     $routes->get('events', 'Student\Events::index');
@@ -139,6 +155,10 @@ $routes->group('teacher', [], static function ($routes) {
     $routes->post('materials/upload', 'Teacher\Materials::upload');
     $routes->get('messages', 'Teacher\Messages::index');
     $routes->get('analytics', 'Teacher\Analytics::index');
+    $routes->get('analytics/export-pdf', 'Teacher\Analytics::exportPdf');
+    $routes->get('attendance', 'Teacher\Dashboard::attendance');
+    $routes->post('attendance', 'Teacher\Dashboard::saveAttendance');
+    $routes->get('debug', 'Teacher\Debug::index');
 });
 
 // Parent Dashboard Routes
@@ -177,3 +197,6 @@ $routes->get('test/student', 'Student\Dashboard::testSimple');
 
 // Test auth service directly
 $routes->get('debug/auth-service', 'Auth::testAuthService');
+
+// API Routes
+$routes->get('api/enrollment', 'Home::getEnrollmentApi');

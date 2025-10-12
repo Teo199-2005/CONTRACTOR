@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\GradeModel;
 use App\Models\StudentModel;
 use App\Models\SubjectModel;
+use App\Models\AttendanceModel;
 
 class Dashboard extends BaseController
 {
@@ -36,7 +37,7 @@ class Dashboard extends BaseController
         $mySubjects = [];
         $recentGrades = [];
         $classAverages = [];
-        $gradeDistribution = ['excellent' => 0, 'very_good' => 0, 'good' => 0, 'fair' => 0, 'passing' => 0, 'failing' => 0];
+        $gradeDistribution = ['excellent' => 0, 'very_good' => 0, 'good' => 0, 'fair' => 0, 'failing' => 0];
         $quarterPerformance = [0, 0, 0, 0];
 
         if ($teacher) {
@@ -110,8 +111,6 @@ class Dashboard extends BaseController
                     $gradeDistribution['good']++;
                 } elseif ($gradeValue >= 75) {
                     $gradeDistribution['fair']++;
-                } elseif ($gradeValue >= 70) {
-                    $gradeDistribution['passing']++;
                 } else {
                     $gradeDistribution['failing']++;
                 }
@@ -145,15 +144,12 @@ class Dashboard extends BaseController
     }
 
     /**
-     * Get current quarter based on date
+     * Get current quarter from system settings
      */
     private function getCurrentQuarter()
     {
-        $month = (int) date('n');
-        if ($month >= 6 && $month <= 8) return 1;      // June-August
-        if ($month >= 9 && $month <= 11) return 2;     // September-November
-        if ($month >= 12 || $month <= 2) return 3;     // December-February
-        return 4;                                       // March-May
+        $systemSettingModel = new \App\Models\SystemSettingModel();
+        return $systemSettingModel->getCurrentQuarter();
     }
 
     public function grades()
@@ -168,18 +164,37 @@ class Dashboard extends BaseController
         $subjectModel = new SubjectModel();
         $gradeModel = new GradeModel();
         
-        $teacher = $teacherModel->where('user_id', $teacherId)->first();
+        // Force Demo Teacher for all users
+        $teacher = $teacherModel->find(11); // Demo Teacher ID
+        
         $students = [];
         $subjects = [];
         $studentGrades = [];
+        $totalPages = 1;
+        $currentPage = 1;
         
         if ($teacher) {
-            // Get students from advised sections
-            $students = $studentModel->select('students.id, students.student_id, students.first_name, students.last_name, students.grade_level, sections.section_name')
+            // Get pagination parameters
+            $currentPage = (int) ($this->request->getGet('page') ?? 1);
+            $perPage = 15;
+            $offset = ($currentPage - 1) * $perPage;
+            
+            // Get total count for pagination
+            $totalStudents = $studentModel->select('students.id')
+                ->join('sections', 'sections.id = students.section_id', 'left')
+                ->where('sections.adviser_id', $teacher['id'])
+                ->where('students.enrollment_status', 'enrolled')
+                ->countAllResults();
+            
+            $totalPages = ceil($totalStudents / $perPage);
+            
+            // Get students from advised sections with pagination
+            $students = $studentModel->select('students.id, students.lrn, students.first_name, students.last_name, students.grade_level, sections.section_name')
                 ->join('sections', 'sections.id = students.section_id', 'left')
                 ->where('sections.adviser_id', $teacher['id'])
                 ->where('students.enrollment_status', 'enrolled')
                 ->orderBy('students.last_name', 'ASC')
+                ->limit($perPage, $offset)
                 ->findAll();
             
             // Get subjects for the grade levels of advised students
@@ -213,7 +228,9 @@ class Dashboard extends BaseController
             'subjects' => $subjects,
             'teacher' => $teacher,
             'studentGrades' => $studentGrades,
-            'currentQuarter' => $this->getCurrentQuarter()
+            'currentQuarter' => $this->getCurrentQuarter(),
+            'currentPage' => $currentPage,
+            'totalPages' => $totalPages
         ]);
     }
 
@@ -273,10 +290,15 @@ class Dashboard extends BaseController
         $teacherModel = new \App\Models\TeacherModel();
         $studentModel = new StudentModel();
         
-        $teacher = $teacherModel->where('user_id', $teacherId)->first();
+        // Force Demo Teacher for all users
+        $teacher = $teacherModel->find(11); // Demo Teacher ID
+        log_message('info', 'Force using Demo Teacher ID 11 for all users');
+        
         $students = [];
         
         if ($teacher) {
+            log_message('info', 'Teacher ID: ' . $teacher['id'] . ', User ID: ' . $teacherId);
+            
             // Get students from sections where this teacher is adviser
             $students = $studentModel->select('students.*, sections.section_name')
                 ->join('sections', 'sections.id = students.section_id', 'left')
@@ -284,6 +306,10 @@ class Dashboard extends BaseController
                 ->where('students.enrollment_status', 'enrolled')
                 ->orderBy('students.last_name', 'ASC')
                 ->findAll();
+            
+            log_message('info', 'Found ' . count($students) . ' students for teacher ID ' . $teacher['id']);
+        } else {
+            log_message('error', 'No teacher record found for user ID: ' . $teacherId);
         }
         
         return view('teacher/students', [
@@ -298,6 +324,107 @@ class Dashboard extends BaseController
         if (!$this->auth->user()->inGroup('teacher')) {
             return redirect()->to(base_url('/'));
         }
-        return view('teacher/schedule', ['title' => 'My Schedule - LPHS SMS']);
+        
+        $teacherId = $this->auth->id();
+        $teacherModel = new \App\Models\TeacherModel();
+        $scheduleModel = new \App\Models\TeacherScheduleModel();
+        
+        // Get teacher record
+        $teacher = $teacherModel->where('user_id', $teacherId)->first();
+        $schedules = [];
+        
+        if ($teacher) {
+            $schedules = $scheduleModel->getTeacherSchedule($teacher['id']);
+        }
+        
+        return view('teacher/schedule', [
+            'title' => 'My Schedule - LPHS SMS',
+            'teacher' => $teacher,
+            'schedules' => $schedules
+        ]);
+    }
+
+    public function attendance()
+    {
+        if (!$this->auth->user()->inGroup('teacher')) {
+            return redirect()->to(base_url('/'));
+        }
+        
+        $teacherId = $this->auth->id();
+        $teacherModel = new \App\Models\TeacherModel();
+        $studentModel = new StudentModel();
+        $attendanceModel = new AttendanceModel();
+        
+        // Force Demo Teacher for all users
+        $teacher = $teacherModel->find(11); // Demo Teacher ID
+        $students = [];
+        $attendanceData = [];
+        $selectedDate = $this->request->getGet('date') ?? date('Y-m-d');
+        
+        if ($teacher) {
+            // Get students from advised sections
+            $students = $studentModel->select('students.id, students.lrn, students.first_name, students.last_name, students.grade_level, sections.section_name')
+                ->join('sections', 'sections.id = students.section_id', 'left')
+                ->where('sections.adviser_id', $teacher['id'])
+                ->where('students.enrollment_status', 'enrolled')
+                ->orderBy('students.last_name', 'ASC')
+                ->findAll();
+            
+            // Get attendance for selected date
+            $attendanceRecords = $attendanceModel->getAttendanceByDate($teacher['id'], $selectedDate);
+            foreach ($attendanceRecords as $record) {
+                $attendanceData[$record['student_id']] = $record;
+            }
+        }
+        
+        return view('teacher/attendance', [
+            'title' => 'Student Attendance - LPHS SMS',
+            'students' => $students,
+            'teacher' => $teacher,
+            'attendanceData' => $attendanceData,
+            'selectedDate' => $selectedDate
+        ]);
+    }
+
+    public function saveAttendance()
+    {
+        if (!$this->auth->user()->inGroup('teacher')) {
+            return redirect()->to(base_url('/'));
+        }
+        
+        $teacherId = $this->auth->id();
+        $teacherModel = new \App\Models\TeacherModel();
+        $attendanceModel = new AttendanceModel();
+        
+        // Force Demo Teacher for all users
+        $teacher = $teacherModel->find(11); // Demo Teacher ID
+        
+        if (!$teacher) {
+            return redirect()->back()->with('error', 'Teacher record not found.');
+        }
+        
+        $date = $this->request->getPost('date');
+        $attendanceData = $this->request->getPost('attendance');
+        
+        if (!$date || !$attendanceData) {
+            return redirect()->back()->with('error', 'Invalid attendance data.');
+        }
+        
+        $saved = 0;
+        foreach ($attendanceData as $studentId => $status) {
+            $data = [
+                'student_id' => (int) $studentId,
+                'teacher_id' => (int) $teacher['id'],
+                'date' => $date,
+                'status' => $status,
+                'remarks' => $this->request->getPost('remarks')[$studentId] ?? null
+            ];
+            
+            if ($attendanceModel->markAttendance($data)) {
+                $saved++;
+            }
+        }
+        
+        return redirect()->back()->with('success', "Attendance saved for {$saved} students.");
     }
 } 

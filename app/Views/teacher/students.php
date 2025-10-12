@@ -26,7 +26,7 @@
                     <tbody>
                         <?php foreach ($students as $student): ?>
                             <tr>
-                                <td><strong><?= esc($student['student_id']) ?></strong></td>
+                                <td><strong><?= esc($student['lrn']) ?></strong></td>
                                 <td><?= esc($student['first_name'] . ' ' . $student['last_name']) ?></td>
                                 <td>Grade <?= esc($student['grade_level']) ?></td>
                                 <td><?= esc($student['section_name'] ?? 'No Section') ?></td>

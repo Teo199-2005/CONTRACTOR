@@ -44,8 +44,8 @@
       <div class="stats-icon bg-primary bg-gradient rounded-circle d-inline-flex align-items-center justify-content-center mb-2" style="width: 40px; height: 40px;">
         <i class="bi bi-wallet2 text-white fs-5"></i>
       </div>
-      <h4 class="stats-number text-primary mb-1 small"><?= esc($student['student_id'] ?? 'Pending') ?></h4>
-      <p class="stats-label text-muted fw-medium mb-0 small">Student ID</p>
+      <h4 class="stats-number text-primary mb-1 small"><?= esc($student['lrn'] ?? 'Pending') ?></h4>
+      <p class="stats-label text-muted fw-medium mb-0 small">LRN</p>
     </div>
   </div>
   

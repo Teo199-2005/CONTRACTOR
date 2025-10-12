@@ -57,6 +57,97 @@
 <!-- Blue Divider -->
 <div class="blue-divider mb-4"></div>
 
+<!-- Next Semester Enrollment -->
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 <?= $canEnrollNextSemester ? 'border-success' : 'border-danger' ?>">
+  <div class="card-body p-3">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <h4 class="card-title mb-2 small">
+          <i class="bi bi-calendar-plus me-2 text-primary"></i>
+          Next Semester Enrollment
+        </h4>
+
+        <?php if ($canEnrollNextSemester): ?>
+          <p class="text-success mb-2 small">
+            <i class="bi bi-check-circle-fill me-2"></i>
+            <strong>Congratulations!</strong> You are eligible to enroll for the next semester.
+            Your GWA of <strong><?= number_format($gwa, 2) ?></strong> meets the minimum requirement of 75.00.
+          </p>
+
+          <div class="mb-2">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Enrollment requirements: GWA ≥ 75.00 | Current GWA: <?= number_format($gwa, 2) ?>
+            </small>
+          </div>
+        <?php else: ?>
+          <p class="text-danger mb-2 small">
+            <i class="bi bi-x-circle-fill me-2"></i>
+            <strong>Enrollment Restricted:</strong> Your current GWA of
+            <strong><?= $gwa !== null ? number_format($gwa, 2) : 'N/A' ?></strong>
+            is below the minimum requirement of 75.00 for next semester enrollment.
+          </p>
+
+          <div class="mb-2">
+            <small class="text-muted">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              You need to improve your grades to at least 75.00 GWA to be eligible for enrollment.
+            </small>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <div class="col-lg-4 text-lg-end">
+        <?php if ($canEnrollNextSemester): ?>
+          <a href="<?= base_url('student/enrollment') ?>" class="btn btn-success px-3 py-2" style="position: relative; z-index: 999; font-weight: 600;">
+            <i class="bi bi-check-circle me-2"></i>
+            Enroll for Next Semester
+          </a>
+        <?php else: ?>
+          <button class="btn btn-secondary btn-sm px-3" disabled>
+            <i class="bi bi-lock me-2"></i>
+            Enrollment Unavailable
+          </button>
+        <?php endif; ?>
+      </div>
+    </div>
+
+    <!-- Additional Info -->
+    <div class="row mt-2 pt-2 border-top">
+      <div class="col-md-6">
+        <small class="text-muted">
+          <strong>Academic Standing:</strong>
+          <?php if ($gwa !== null): ?>
+            <?php if ($gwa >= 95): ?>
+              <span class="text-success">Summa Cum Laude</span>
+            <?php elseif ($gwa >= 90): ?>
+              <span class="text-success">Magna Cum Laude</span>
+            <?php elseif ($gwa >= 85): ?>
+              <span class="text-info">Cum Laude</span>
+            <?php elseif ($gwa >= 75): ?>
+              <span class="text-warning">Good Standing</span>
+            <?php else: ?>
+              <span class="text-danger">Academic Probation</span>
+            <?php endif; ?>
+          <?php else: ?>
+            <span class="text-muted">Not Available</span>
+          <?php endif; ?>
+        </small>
+      </div>
+      <div class="col-md-6 text-md-end">
+        <small class="text-muted">
+          <strong>Next Semester:</strong>
+          <?php
+            $currentYear = date('Y');
+            $nextSemester = ($currentYear + 1) . '-' . ($currentYear + 2);
+          ?>
+          <?= $nextSemester ?>
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Quarter Selection -->
 <div class="card bg-white border-0 shadow-sm rounded-3 mb-4">
   <div class="card-body p-3">
@@ -181,105 +272,10 @@
   </div>
 </div>
 
-<!-- Next Semester Enrollment -->
-<div class="card bg-white border-0 shadow-sm rounded-3 <?= $canEnrollNextSemester ? 'border-success' : 'border-danger' ?>">
-  <div class="card-body p-3">
-    <div class="row align-items-center">
-      <div class="col-lg-8">
-        <h4 class="card-title mb-2 small">
-          <i class="bi bi-calendar-plus me-2 text-primary"></i>
-          Next Semester Enrollment
-        </h4>
 
-        <?php if ($canEnrollNextSemester): ?>
-          <p class="text-success mb-2 small">
-            <i class="bi bi-check-circle-fill me-2"></i>
-            <strong>Congratulations!</strong> You are eligible to enroll for the next semester.
-            Your GWA of <strong><?= number_format($gwa, 2) ?></strong> meets the minimum requirement of 75.00.
-          </p>
 
-          <div class="mb-2">
-            <small class="text-muted">
-              <i class="bi bi-info-circle me-1"></i>
-              Enrollment requirements: GWA ≥ 75.00 | Current GWA: <?= number_format($gwa, 2) ?>
-            </small>
-          </div>
-        <?php else: ?>
-          <p class="text-danger mb-2 small">
-            <i class="bi bi-x-circle-fill me-2"></i>
-            <strong>Enrollment Restricted:</strong> Your current GWA of
-            <strong><?= $gwa !== null ? number_format($gwa, 2) : 'N/A' ?></strong>
-            is below the minimum requirement of 75.00 for next semester enrollment.
-          </p>
 
-          <div class="mb-2">
-            <small class="text-muted">
-              <i class="bi bi-exclamation-triangle me-1"></i>
-              You need to improve your grades to at least 75.00 GWA to be eligible for enrollment.
-            </small>
-          </div>
-        <?php endif; ?>
-      </div>
 
-      <div class="col-lg-4 text-lg-end">
-        <?php if ($canEnrollNextSemester): ?>
-          <button class="btn btn-success btn-sm px-3" onclick="enrollNextSemester()">
-            <i class="bi bi-check-circle me-2"></i>
-            Enroll for Next Semester
-          </button>
-        <?php else: ?>
-          <button class="btn btn-secondary btn-sm px-3" disabled>
-            <i class="bi bi-lock me-2"></i>
-            Enrollment Unavailable
-          </button>
-        <?php endif; ?>
-      </div>
-    </div>
 
-    <!-- Additional Info -->
-    <div class="row mt-2 pt-2 border-top">
-      <div class="col-md-6">
-        <small class="text-muted">
-          <strong>Academic Standing:</strong>
-          <?php if ($gwa !== null): ?>
-            <?php if ($gwa >= 95): ?>
-              <span class="text-success">Summa Cum Laude</span>
-            <?php elseif ($gwa >= 90): ?>
-              <span class="text-success">Magna Cum Laude</span>
-            <?php elseif ($gwa >= 85): ?>
-              <span class="text-info">Cum Laude</span>
-            <?php elseif ($gwa >= 75): ?>
-              <span class="text-warning">Good Standing</span>
-            <?php else: ?>
-              <span class="text-danger">Academic Probation</span>
-            <?php endif; ?>
-          <?php else: ?>
-            <span class="text-muted">Not Available</span>
-          <?php endif; ?>
-        </small>
-      </div>
-      <div class="col-md-6 text-md-end">
-        <small class="text-muted">
-          <strong>Next Semester:</strong>
-          <?php
-            $currentYear = date('Y');
-            $nextSemester = ($currentYear + 1) . '-' . ($currentYear + 2);
-          ?>
-          <?= $nextSemester ?>
-        </small>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-function enrollNextSemester() {
-  if (confirm('Are you sure you want to enroll for the next semester?')) {
-    // Here you would typically make an AJAX call to handle enrollment
-    alert('Enrollment request submitted! Please wait for admin approval.');
-    // You can add actual enrollment logic here
-  }
-}
-</script>
 
 <?= $this->endSection() ?>

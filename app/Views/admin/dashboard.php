@@ -1,6 +1,127 @@
 <?= $this->extend('dashboard_layout') ?>
 <?= $this->section('content') ?>
 
+<!-- Create Admin Modal -->
+<div id="createAdminModal" class="custom-modal-overlay" style="display: none;">
+  <div class="custom-modal-container">
+    <div class="custom-modal-header">
+      <h3 class="custom-modal-title" style="color: white !important;"><i class="bi bi-person-plus me-2" style="color: white !important;"></i>Create Admin Account</h3>
+      <button type="button" class="custom-modal-close" onclick="closeCreateAdminModal()">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="custom-modal-body">
+      <form id="createAdminForm">
+        <div class="mb-3">
+          <label for="adminEmail" class="form-label">Email Address</label>
+          <input type="email" class="form-control" id="adminEmail" name="email" required>
+        </div>
+        <div class="mb-3">
+          <label for="adminFirstName" class="form-label">First Name</label>
+          <input type="text" class="form-control" id="adminFirstName" name="first_name" required>
+        </div>
+        <div class="mb-3">
+          <label for="adminLastName" class="form-label">Last Name</label>
+          <input type="text" class="form-control" id="adminLastName" name="last_name" required>
+        </div>
+        <div class="mb-3">
+          <label for="adminPassword" class="form-label">Password</label>
+          <div class="input-group">
+            <input type="password" class="form-control" id="adminPassword" name="password" required>
+            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label for="adminConfirmPassword" class="form-label">Confirm Password</label>
+          <input type="password" class="form-control" id="adminConfirmPassword" name="confirm_password" required>
+        </div>
+      </form>
+    </div>
+    <div class="custom-modal-footer">
+      <button type="button" class="btn btn-dark" onclick="closeCreateAdminModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="submitCreateAdminForm()">Create Admin</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function openCreateAdminModal() {
+  const modal = document.getElementById('createAdminModal');
+  const footer = document.querySelector('.modern-footer');
+  
+  if (footer) footer.style.display = 'none';
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCreateAdminModal() {
+  const modal = document.getElementById('createAdminModal');
+  const footer = document.querySelector('.modern-footer');
+  
+  modal.style.display = 'none';
+  if (footer) footer.style.display = 'block';
+  document.body.style.overflow = '';
+  
+  document.getElementById('createAdminForm').reset();
+}
+
+function submitCreateAdminForm() {
+  const form = document.getElementById('createAdminForm');
+  const password = document.getElementById('adminPassword').value;
+  const confirmPassword = document.getElementById('adminConfirmPassword').value;
+  
+  if (password !== confirmPassword) {
+    alert('Passwords do not match!');
+    return;
+  }
+  
+  const formData = new FormData(form);
+  
+  fetch('<?= base_url('admin/dashboard/createAdmin') ?>', {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      alert('Admin account created successfully!');
+      closeCreateAdminModal();
+    } else {
+      alert('Error: ' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while creating the admin account.');
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const togglePassword = document.getElementById('togglePassword');
+  if (togglePassword) {
+    togglePassword.addEventListener('click', function() {
+      const password = document.getElementById('adminPassword');
+      const confirmPassword = document.getElementById('adminConfirmPassword');
+      const icon = this.querySelector('i');
+      
+      if (password.type === 'password') {
+        password.type = 'text';
+        confirmPassword.type = 'text';
+        icon.classList.remove('bi-eye');
+        icon.classList.add('bi-eye-slash');
+      } else {
+        password.type = 'password';
+        confirmPassword.type = 'password';
+        icon.classList.remove('bi-eye-slash');
+        icon.classList.add('bi-eye');
+      }
+    });
+  }
+});
+</script>
+
 <div class="dashboard-header d-flex align-items-center justify-content-between mb-4">
   <div class="d-flex align-items-center gap-3">
     <div class="text-primary fs-4"><i class="bi bi-speedometer2"></i></div>
@@ -9,17 +130,33 @@
       <small class="text-muted">Overview and quick actions</small>
     </div>
   </div>
-  <div class="btn-group flex-wrap">
-    <a href="<?= base_url('admin/students') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-people-fill me-2"></i>Students</a>
-    <a href="<?= base_url('admin/teachers') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-person-video3 me-2"></i>Teachers</a>
-    <a href="<?= base_url('admin/sections') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-grid-3x3-gap me-2"></i>Subjects & Sections</a>
-    <a href="<?= base_url('announcements/admin') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone me-2"></i>Announcements</a>
-    <a href="<?= base_url('admin/enrollments') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-person-check me-2"></i>Enrollments</a>
-    <a href="<?= base_url('admin/id-cards') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-credit-card-2-front me-2"></i>ID Cards</a>
-    <a href="<?= base_url('admin/analytics') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-graph-up me-2"></i>Analytics</a>
-    <a href="<?= base_url('admin/users') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-people me-2"></i>Users & Roles</a>
-
-    <a href="<?= base_url('admin/notifications') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-bell me-2"></i>Notifications</a>
+  <div class="d-flex flex-wrap gap-2">
+    <div class="btn-group flex-wrap">
+      <a href="<?= base_url('admin/students') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-people-fill me-2"></i>Students</a>
+      <a href="<?= base_url('admin/teachers') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-person-video3 me-2"></i>Teachers</a>
+      <a href="<?= base_url('admin/sections') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-grid-3x3-gap me-2"></i>Subjects & Sections</a>
+      <a href="<?= base_url('announcements/admin') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone me-2"></i>Announcements</a>
+      <a href="<?= base_url('admin/students/pending') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-clock-history me-2"></i>Pending Applications</a>
+      <a href="<?= base_url('admin/id-cards') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-credit-card-2-front me-2"></i>ID Cards</a>
+      <a href="<?= base_url('admin/analytics') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-graph-up me-2"></i>Analytics</a>
+      <a href="<?= base_url('admin/notifications') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-bell me-2"></i>Notifications</a>
+    </div>
+    
+    <div class="btn-group">
+      <button class="btn btn-sm btn-success dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        <i class="bi bi-calendar-check me-1"></i>Q<?= $currentQuarter ?>
+      </button>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="#" onclick="updateQuarter(1)">Quarter 1</a></li>
+        <li><a class="dropdown-item" href="#" onclick="updateQuarter(2)">Quarter 2</a></li>
+        <li><a class="dropdown-item" href="#" onclick="updateQuarter(3)">Quarter 3</a></li>
+        <li><a class="dropdown-item" href="#" onclick="updateQuarter(4)">Quarter 4</a></li>
+      </ul>
+    </div>
+    
+    <button type="button" class="btn btn-sm btn-warning" onclick="openCreateAdminModal()" id="createAdminBtn">
+      <i class="bi bi-person-plus me-1"></i>Create Admin
+    </button>
   </div>
 </div>
 
@@ -45,7 +182,21 @@
         </div>
       </div>
       <div class="card-body py-2">
-        <div class="chart-container" style="height: 180px;">
+        <div class="row mb-2">
+          <div class="col-6">
+            <div class="text-center">
+              <div class="h5 mb-0 text-primary"><?= $stats['total_students'] ?? 0 ?></div>
+              <small class="text-muted">This Year</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="text-center">
+              <div class="h5 mb-0 text-success">+<?= round((($stats['total_students'] ?? 0) / max(1, 1)) * 100, 0) ?>%</div>
+              <small class="text-muted">Growth</small>
+            </div>
+          </div>
+        </div>
+        <div class="chart-container" style="height: 140px;">
           <canvas id="enrollmentTrendChart"></canvas>
         </div>
       </div>
@@ -222,6 +373,113 @@
   font-size: 0.75rem;
   font-weight: 500;
 }
+
+/* Custom Modal Styles */
+.custom-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+
+.custom-modal-container {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow: hidden;
+  position: relative;
+  z-index: 100001;
+  pointer-events: auto;
+}
+
+.custom-modal-header {
+  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+  color: #ffffff !important;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid #1e40af;
+}
+
+.custom-modal-header * {
+  color: #ffffff !important;
+}
+
+.custom-modal-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.custom-modal-title, .custom-modal-title * {
+  color: #ffffff !important;
+}
+
+.custom-modal-close {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff !important;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+}
+
+.custom-modal-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+.custom-modal-close i {
+  color: #ffffff !important;
+}
+
+.custom-modal-body {
+  padding: 2rem;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: #f8fafc;
+  position: relative;
+  z-index: 100001;
+}
+
+.custom-modal-body input,
+.custom-modal-body select,
+.custom-modal-body textarea,
+.custom-modal-body button {
+  position: relative;
+  z-index: 100002;
+  pointer-events: auto;
+}
+
+.custom-modal-footer {
+  background: #f1f5f9;
+  padding: 1.5rem 2rem;
+  border-top: 2px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
 </style>
 
 <!-- Chart.js for enrollment charts -->
@@ -231,17 +489,17 @@ let enrollmentChart, predictionChart;
 let currentEnrollmentYear = 2024;
 let currentPredictionYear = 2026;
 
-// Sample data with database integration
-const enrollmentData = {
-  2023: { monthly: [45, 52, 48, 65, 78, 85, 92, 88, 95, 102, 98, 105], yearly: [945] },
-  2024: { monthly: [2, 3, 2, 4, 1, 2, 1, 0, 1, 0, 0, 0], yearly: [<?= isset($stats) ? $stats['total_students'] : 16 ?>] },
-  2025: { monthly: [50, 58, 55, 72, 85, 92, 99, 95, 102, 109, 105, 112], yearly: [1034] }
+// Real enrollment data from database
+const enrollmentData = <?= $enrollmentData ?? 'null' ?> || {
+  2023: { monthly: [3, 2, 1, 2, 4, 35, 28, 15, 6, 2, 1, 1], yearly: [100] },
+  2024: { monthly: [4, 3, 1, 3, 5, 47, 38, 20, 8, 3, 2, 1], yearly: [135] },
+  2025: { monthly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], yearly: [0] }
 };
 
-const predictionData = {
-  2025: { monthly: [2, 3, 4, 5, 6, 8, 10, 12, 15, 18, 20, 22], yearly: [<?= isset($stats) ? round($stats['total_students'] * 1.25) : 20 ?>] },
-  2026: { monthly: [3, 4, 5, 6, 8, 10, 12, 15, 18, 22, 25, 28], yearly: [<?= isset($stats) ? round($stats['total_students'] * 1.56) : 25 ?>] },
-  2027: { monthly: [4, 5, 6, 8, 10, 12, 15, 18, 22, 26, 30, 35], yearly: [<?= isset($stats) ? round($stats['total_students'] * 1.94) : 31 ?>] }
+const predictionData = <?= $predictionData ?? 'null' ?> || {
+  2026: { monthly: [5, 4, 1, 4, 7, 63, 51, 27, 11, 4, 3, 1], yearly: [181] },
+  2027: { monthly: [6, 5, 1, 5, 8, 72, 58, 31, 12, 5, 3, 1], yearly: [207] },
+  2028: { monthly: [7, 6, 1, 6, 9, 82, 66, 35, 14, 6, 4, 1], yearly: [237] }
 };
 
 
@@ -369,14 +627,16 @@ function initializeGradeChart() {
   new Chart(gradeCtx, {
     type: 'bar',
     data: {
-      labels: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
+      labels: ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12'],
       datasets: [{
         label: 'Enrolled Students',
         data: [
           <?= $enrollmentByGrade[7] ?? 0 ?>,
           <?= $enrollmentByGrade[8] ?? 0 ?>,
           <?= $enrollmentByGrade[9] ?? 0 ?>,
-          <?= $enrollmentByGrade[10] ?? 0 ?>
+          <?= $enrollmentByGrade[10] ?? 0 ?>,
+          <?= $enrollmentByGrade[11] ?? 0 ?>,
+          <?= $enrollmentByGrade[12] ?? 0 ?>
         ],
         backgroundColor: gradient,
         borderColor: colorPrimary,
@@ -442,6 +702,31 @@ function formatDateTime(dateString) {
   return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
 }
 
+function updateQuarter(quarter) {
+  fetch('<?= base_url('admin/dashboard/updateQuarter') ?>', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: 'quarter=' + quarter
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      location.reload();
+    } else {
+      alert('Failed to update quarter: ' + data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('An error occurred while updating the quarter.');
+  });
+}
+
 </script>
+
+
 
 <?= $this->endSection() ?>

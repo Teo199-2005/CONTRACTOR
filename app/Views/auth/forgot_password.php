@@ -172,7 +172,7 @@
   <div class="forgot-card">
     <div class="forgot-header">
       <h1 class="forgot-title">Reset Password</h1>
-      <p class="forgot-subtitle">Enter your email address and we'll send you instructions to reset your password.</p>
+      <p class="forgot-subtitle">Enter your PRC License Number (teachers) or LRN (students) to verify your identity.</p>
     </div>
     
     <div class="forgot-body">
@@ -198,15 +198,15 @@
         </div>
       <?php endif; ?>
 
-      <form method="post" action="<?= base_url('forgot-password') ?>">
+      <form method="post" action="<?= base_url('verify-identity') ?>">
         <?= csrf_field() ?>
         
         <div class="mb-3">
-          <input type="email" class="form-control" id="email" name="email"
-                 placeholder="Enter your email address" value="<?= old('email') ?>" required>
+          <input type="text" class="form-control" id="identifier" name="identifier"
+                 placeholder="Enter PRC License Number or LRN" value="<?= old('identifier') ?>" required>
         </div>
 
-        <button type="submit" class="forgot-btn">SEND RESET INSTRUCTIONS</button>
+        <button type="submit" class="forgot-btn">VERIFY IDENTITY</button>
       </form>
 
       <div class="back-section">

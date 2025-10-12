@@ -112,7 +112,7 @@ class Dashboard extends BaseController
                 'id' => 1,
                 'first_name' => 'Test',
                 'last_name' => 'Student',
-                'student_id' => '2024-001',
+                'lrn' => '2024-001',
                 'grade_level' => 10,
                 'section' => 'Grade 10-A',
                 'enrollment_status' => 'enrolled',
@@ -196,7 +196,7 @@ class Dashboard extends BaseController
                         'id' => 1,
                         'first_name' => 'Test',
                         'last_name' => 'Student',
-                        'student_id' => '2024-001',
+                        'lrn' => '2024-001',
                         'grade_level' => 10,
                         'enrollment_status' => 'enrolled'
                     ],
@@ -459,5 +459,18 @@ class Dashboard extends BaseController
             3 => 84.8,
             4 => null // Not yet available
         ];
+    }
+
+    public function enrollment()
+    {
+        return view('student/enrollment', [
+            'title' => 'Next Semester Enrollment - LPHS SMS'
+        ]);
+    }
+
+    public function submitEnrollment()
+    {
+        // Handle enrollment form submission
+        return redirect()->to(base_url('student/enrollment'))->with('success', 'Enrollment application submitted successfully!');
     }
 }

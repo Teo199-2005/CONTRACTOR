@@ -13,7 +13,7 @@ class StudentModel extends Model
     protected $useSoftDeletes = true;
     protected $protectFields = true;
     protected $allowedFields = [
-        'student_id', 'user_id', 'first_name', 'middle_name', 'last_name', 'suffix',
+        'student_id', 'user_id', 'lrn', 'student_type', 'first_name', 'middle_name', 'last_name', 'suffix',
         'gender', 'date_of_birth', 'place_of_birth', 'nationality', 'religion',
         'contact_number', 'email', 'address', 'emergency_contact_name',
         'emergency_contact_number', 'emergency_contact_relationship', 'photo_path',
@@ -40,7 +40,7 @@ class StudentModel extends Model
         'gender' => 'required|in_list[Male,Female]',
         'date_of_birth' => 'required|valid_date',
         'enrollment_status' => 'in_list[pending,approved,rejected,enrolled,graduated,dropped]',
-        'grade_level' => 'permit_empty|integer|greater_than[6]|less_than[11]',
+        'grade_level' => 'permit_empty|integer|greater_than[6]|less_than[13]',
         'email' => 'permit_empty|valid_email'
     ];
     protected $validationMessages = [];

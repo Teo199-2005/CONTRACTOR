@@ -2,212 +2,113 @@
 <?= $this->section('content') ?>
 
 <style>
-/* Enhanced Analytics Page Styling */
-.analytics-page-content {
-  min-height: 200vh;
-  padding-bottom: 15rem;
+/* Admin-style Analytics Styling */
+.analytics-page.compact {
+  font-size: 14px;
 }
 
-.analytics-card {
-  background: white;
+.overview-card {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.stat-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stat-chip {
+  padding: 4px 8px;
   border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
-  border: 2px solid #e2e8f0;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.analytics-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #1e40af, #3b82f6);
-  border-radius: 4px 4px 0 0;
-}
-
-.analytics-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.12), 0 4px 8px rgba(0, 0, 0, 0.08);
-  border-color: #3b82f6;
-}
-
-.stat-card {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  color: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  text-align: center;
-  border: 2px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-}
-
-.stat-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 12px 30px rgba(30, 64, 175, 0.25);
-}
-
-.stat-card.success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-}
-
-.stat-card.warning {
-  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-}
-
-.stat-card.info {
-  background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%);
-}
-
-.stat-number {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin-bottom: 0.5rem;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.stat-label {
-  font-size: 0.9rem;
-  opacity: 0.9;
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+}
+
+.bg-primary-soft { background: rgba(30, 64, 175, 0.1); color: #1e40af; }
+.bg-blue-soft { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+.bg-amber-soft { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.bg-slate-soft { background: rgba(100, 116, 139, 0.1); color: #64748b; }
+.bg-gray-soft { background: rgba(107, 114, 128, 0.1); color: #6b7280; }
+.bg-cyan-soft { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; }
+.bg-indigo-soft { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+
+.analytics-layout {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.chart-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .chart-container {
   position: relative;
-  height: 300px;
-  width: 100%;
-  background: #f8fafc;
-  border-radius: 8px;
-  padding: 1rem;
-  border: 1px solid #e2e8f0;
+  height: 120px;
 }
 
-.performance-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.chart-canvas {
+  max-height: 120px;
 }
 
-.section-header {
-  background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-  color: white;
-  padding: 1rem 1.5rem;
-  border-radius: 12px 12px 0 0;
-  margin: -1rem -1rem 1rem -1rem;
-  border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.analytics-grid {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.trend-indicator {
-  display: inline-flex;
+.metric-row {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.25rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.25rem 0.5rem;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
 }
 
-.trend-up {
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
-  border-color: rgba(16, 185, 129, 0.2);
+.metric-row:last-child {
+  border-bottom: none;
 }
 
-.trend-down {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.2);
+.analytics-header {
+  margin-bottom: 1rem;
 }
 
-/* Widget containers enhancement */
-.widget, .stat-widget, .chart-widget {
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  position: relative;
-}
-
-.widget::after {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
-  background: linear-gradient(45deg, #3b82f6, #1e40af, #3b82f6, #60a5fa);
-  border-radius: 12px;
-  z-index: -1;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.widget:hover::after {
-  opacity: 0.1;
-}
-
-.student-row {
-  padding: 0.75rem;
-  border-radius: 8px;
-  margin-bottom: 0.5rem;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-left: 4px solid #3b82f6;
-  transition: all 0.3s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-}
-
-.student-row:hover {
-  background: #f8fafc;
-  border-color: #3b82f6;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.1);
-}
-
-.progress-thin {
-  height: 8px;
-  border-radius: 4px;
-  border: 1px solid #e2e8f0;
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.progress-bar {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+@media (max-width: 768px) {
+  .analytics-layout {
+    grid-template-columns: 1fr;
+  }
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+  .stat-chips {
+    justify-content: center;
+  }
 }
 </style>
 
-<div class="analytics-page-content">
-<!-- Header Section -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div class="d-flex align-items-center gap-3">
-    <div class="text-primary fs-4"><i class="bi bi-graph-up-arrow"></i></div>
-    <div>
-      <h1 class="h4 mb-0">Class Analytics</h1>
-      <small class="text-muted">Comprehensive performance insights for your classes</small>
-    </div>
-  </div>
+<div class="d-flex justify-content-between align-items-center mb-3 analytics-header">
+  <h1 class="h5 mb-0">Class Analytics</h1>
   <div class="d-flex gap-2">
-    <button class="btn btn-outline-primary btn-sm" onclick="exportAnalytics()">
-      <i class="bi bi-download me-1"></i>Export Report
-    </button>
-    <a href="<?= base_url('teacher/dashboard') ?>" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Back
+    <a href="<?= base_url('teacher/analytics/export-pdf') ?>" class="btn btn-sm btn-primary" target="_blank">
+      <i class="bi bi-file-earmark-pdf"></i> Export PDF Report
     </a>
+    <a href="<?= base_url('teacher/dashboard') ?>" class="btn btn-sm btn-outline-secondary">Back</a>
   </div>
 </div>
+
+<?php
+  $totalStudents = (int)($analytics['totalStudents'] ?? 0);
+  $classAverage = (float)($analytics['classAverage'] ?? 0);
+  $attendanceRate = (float)($analytics['attendanceRate'] ?? 0);
+  $improvementRate = (float)($analytics['improvementRate'] ?? 0);
+?>
 
 <?php if (isset($error)): ?>
 <div class="alert alert-warning">
@@ -215,218 +116,199 @@
 </div>
 <?php else: ?>
 
-<!-- Key Statistics Row -->
-<div class="row g-3 mb-4">
-  <div class="col-md-3">
-    <div class="stat-card">
-      <div class="stat-number"><?= $analytics['totalStudents'] ?? 0 ?></div>
-      <div class="stat-label">Total Students</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="stat-card success">
-      <div class="stat-number"><?= number_format($analytics['classAverage'] ?? 0, 1) ?>%</div>
-      <div class="stat-label">Class Average</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="stat-card warning">
-      <div class="stat-number"><?= number_format($analytics['attendanceRate'] ?? 0, 1) ?>%</div>
-      <div class="stat-label">Attendance Rate</div>
-    </div>
-  </div>
-  <div class="col-md-3">
-    <div class="stat-card info">
-      <div class="stat-number">+<?= number_format($analytics['improvementRate'] ?? 0, 1) ?>%</div>
-      <div class="stat-label">Improvement Rate</div>
-    </div>
-  </div>
-</div>
-
-<!-- Main Analytics Grid -->
-<div class="row g-4">
-  <!-- Grade Distribution Chart -->
-  <div class="col-lg-6">
-    <div class="analytics-card h-100">
-      <div class="section-header">
-        <h5 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Grade Distribution</h5>
+<div class="analytics-page compact">
+  <div class="card overview-card mb-3">
+    <div class="card-body d-flex flex-wrap align-items-center justify-content-between gap-2 py-2">
+      <div class="d-flex align-items-center gap-2">
+        <h6 class="mb-0">Overview</h6>
+        <small class="text-muted">Class performance snapshot</small>
       </div>
-      <div class="p-3">
-        <div class="chart-container">
-          <canvas id="gradeDistributionChart"></canvas>
-        </div>
-        <div class="mt-3">
-          <div class="row text-center">
-            <div class="col-4">
-              <div class="text-success fw-bold"><?= $analytics['gradeDistribution']['excellent'] + $analytics['gradeDistribution']['very_good'] ?></div>
-              <small class="text-muted">Excellent/Very Good</small>
-            </div>
-            <div class="col-4">
-              <div class="text-warning fw-bold"><?= $analytics['gradeDistribution']['good'] + $analytics['gradeDistribution']['fair'] ?></div>
-              <small class="text-muted">Good/Fair</small>
-            </div>
-            <div class="col-4">
-              <div class="text-danger fw-bold"><?= $analytics['gradeDistribution']['passing'] + $analytics['gradeDistribution']['failing'] ?></div>
-              <small class="text-muted">Needs Improvement</small>
-            </div>
+      <div class="stat-chips">
+        <span class="stat-chip bg-primary-soft">Total <strong><?= $totalStudents ?></strong></span>
+        <span class="stat-chip bg-blue-soft">Average <strong><?= number_format($classAverage, 1) ?>%</strong></span>
+        <span class="stat-chip bg-amber-soft">Attendance <strong><?= number_format($attendanceRate, 1) ?>%</strong></span>
+        <span class="stat-chip bg-cyan-soft">Improvement <strong>+<?= number_format($improvementRate, 1) ?>%</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="analytics-layout">
+    <!-- Left: 2x2 charts grid (compact) -->
+    <div class="analytics-cell">
+      <div class="charts-grid">
+        <div class="card chart-card">
+          <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <strong class="small">Grade Distribution</strong>
+            <small class="text-muted d-none d-md-inline">Performance</small>
           </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Quarter Trends Chart -->
-  <div class="col-lg-6">
-    <div class="analytics-card h-100">
-      <div class="section-header">
-        <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Quarter Performance Trends</h5>
-      </div>
-      <div class="p-3">
-        <div class="chart-container">
-          <canvas id="quarterTrendsChart"></canvas>
-        </div>
-        <div class="mt-3">
-          <div class="d-flex justify-content-between align-items-center">
-            <span class="trend-indicator trend-up">
-              <i class="bi bi-arrow-up"></i>
-              Improving trend this quarter
-            </span>
-            <small class="text-muted">School Year <?= $schoolYear ?></small>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Subject Performance and Student Rankings -->
-<div class="row g-4 mt-2">
-  <!-- Subject Averages -->
-  <div class="col-lg-6">
-    <div class="analytics-card h-100">
-      <div class="section-header">
-        <h5 class="mb-0"><i class="bi bi-book me-2"></i>Subject Performance</h5>
-      </div>
-      <div class="p-3">
-        <?php if (!empty($analytics['subjectAverages'])): ?>
-          <?php foreach ($analytics['subjectAverages'] as $subject): ?>
-            <div class="student-row">
-              <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-semibold"><?= esc($subject['subject']) ?></span>
-                <span class="performance-badge bg-<?= $subject['average'] >= 85 ? 'success' : ($subject['average'] >= 75 ? 'warning' : 'danger') ?> text-white">
-                  <?= number_format($subject['average'], 1) ?>%
-                </span>
+          <div class="card-body py-2">
+            <div class="row mb-2">
+              <div class="col-4">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-success"><?= ($analytics['gradeDistribution']['excellent'] ?? 0) + ($analytics['gradeDistribution']['very_good'] ?? 0) ?></div>
+                  <small class="text-muted">Excellent</small>
+                </div>
               </div>
-              <div class="progress progress-thin">
-                <div class="progress-bar bg-<?= $subject['average'] >= 85 ? 'success' : ($subject['average'] >= 75 ? 'warning' : 'danger') ?>"
-                     style="width: <?= min($subject['average'], 100) ?>%"></div>
+              <div class="col-4">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-warning"><?= ($analytics['gradeDistribution']['good'] ?? 0) + ($analytics['gradeDistribution']['fair'] ?? 0) ?></div>
+                  <small class="text-muted">Good</small>
+                </div>
               </div>
-              <small class="text-muted"><?= $subject['count'] ?> students graded</small>
+              <div class="col-4">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-danger"><?= ($analytics['gradeDistribution']['passing'] ?? 0) + ($analytics['gradeDistribution']['failing'] ?? 0) ?></div>
+                  <small class="text-muted">Needs Work</small>
+                </div>
+              </div>
             </div>
-          <?php endforeach; ?>
-        <?php else: ?>
-          <div class="text-center py-4">
-            <i class="bi bi-graph-down text-muted" style="font-size: 3rem;"></i>
-            <p class="text-muted mt-2">No subject data available yet</p>
+            <div class="chart-container">
+              <canvas id="gradeDistributionChart" class="chart-canvas"></canvas>
+            </div>
           </div>
-        <?php endif; ?>
-      </div>
-    </div>
-  </div>
-
-  <!-- Top Performing Students -->
-  <div class="col-lg-6">
-    <div class="analytics-card h-100">
-      <div class="section-header">
-        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Student Performance Rankings</h5>
-      </div>
-      <div class="p-3">
-        <?php if (!empty($analytics['studentPerformance'])): ?>
-          <?php
-          // Sort students by average (descending)
-          usort($analytics['studentPerformance'], function($a, $b) {
-            return $b['average'] <=> $a['average'];
-          });
-          ?>
-          <?php foreach (array_slice($analytics['studentPerformance'], 0, 10) as $index => $student): ?>
-            <div class="student-row">
-              <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center gap-3">
-                  <div class="badge bg-<?= $index < 3 ? 'warning' : 'secondary' ?> rounded-circle" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;">
-                    <?= $index + 1 ?>
-                  </div>
-                  <div>
-                    <div class="fw-semibold"><?= esc($student['name']) ?></div>
-                    <small class="text-muted"><?= $student['grade_count'] ?> subjects</small>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <strong class="small">Quarter Trends</strong>
+            <small class="text-muted d-none d-md-inline">Progress</small>
+          </div>
+          <div class="card-body py-2">
+            <div class="row mb-2">
+              <div class="col-6">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-primary"><?= number_format($classAverage, 1) ?>%</div>
+                  <small class="text-muted">Current</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-success">+<?= number_format($improvementRate, 1) ?>%</div>
+                  <small class="text-muted">Growth</small>
+                </div>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="quarterTrendsChart" class="chart-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <strong class="small">Performance Trends</strong>
+            <small class="text-muted d-none d-md-inline">Monthly</small>
+          </div>
+          <div class="card-body py-2">
+            <div class="row mb-2">
+              <div class="col-6">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-primary"><?= number_format($classAverage, 1) ?>%</div>
+                  <small class="text-muted">Current</small>
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="text-center">
+                  <div class="h6 mb-0 text-success">+<?= number_format($improvementRate, 1) ?>%</div>
+                  <small class="text-muted">Growth</small>
+                </div>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="performanceChart" class="chart-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+        <div class="card chart-card">
+          <div class="card-header d-flex justify-content-between align-items-center py-2">
+            <strong class="small">Attendance Overview</strong>
+            <small class="text-muted d-none d-md-inline">This Month</small>
+          </div>
+          <div class="card-body py-2">
+            <?php if (isset($analytics['attendanceStats'])): ?>
+              <div class="row mb-2">
+                <div class="col-6">
+                  <div class="text-center">
+                    <div class="h6 mb-0 text-success"><?= $analytics['attendanceStats']['present'] ?? 0 ?></div>
+                    <small class="text-muted">Present</small>
                   </div>
                 </div>
-                <span class="performance-badge bg-<?= $student['average'] >= 85 ? 'success' : ($student['average'] >= 75 ? 'warning' : 'danger') ?> text-white">
-                  <?= number_format($student['average'], 1) ?>%
-                </span>
+                <div class="col-6">
+                  <div class="text-center">
+                    <div class="h6 mb-0 text-danger"><?= $analytics['attendanceStats']['absent'] ?? 0 ?></div>
+                    <small class="text-muted">Absent</small>
+                  </div>
+                </div>
               </div>
+            <?php else: ?>
+              <div class="text-center py-3">
+                <small class="text-muted">No attendance data</small>
+              </div>
+            <?php endif; ?>
+            <div class="chart-container">
+              <canvas id="attendanceChart" class="chart-canvas"></canvas>
             </div>
-          <?php endforeach; ?>
-        <?php else: ?>
-          <div class="text-center py-4">
-            <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
-            <p class="text-muted mt-2">No student performance data available</p>
           </div>
-        <?php endif; ?>
+        </div>
+
       </div>
     </div>
-  </div>
-</div>
 
-<!-- Additional Insights -->
-<div class="row g-4 mt-2">
-  <div class="col-12">
-    <div class="analytics-card">
-      <div class="section-header">
-        <h5 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Key Insights & Recommendations</h5>
+    <!-- Right: compact widgets stacked -->
+    <div class="analytics-cell">
+      <div class="card mb-3">
+        <div class="card-header py-2"><strong class="small">Key Metrics</strong></div>
+        <div class="card-body py-2">
+          <div class="metric-row"><span>Class Average</span><strong><?= number_format($classAverage, 1) ?>%</strong></div>
+          <div class="metric-row"><span>Attendance</span><strong><?= number_format($attendanceRate, 1) ?>%</strong></div>
+          <div class="metric-row"><span>Improvement</span><strong>+<?= number_format($improvementRate, 1) ?>%</strong></div>
+          <div class="metric-row mb-0"><span>Total Students</span><strong><?= $totalStudents ?></strong></div>
+        </div>
       </div>
-      <div class="p-3">
-        <div class="row">
-          <div class="col-md-4">
-            <div class="border-start border-primary border-4 ps-3 mb-3">
-              <h6 class="text-primary mb-1">Performance Trend</h6>
-              <p class="mb-0 small">
-                <?php if (($analytics['classAverage'] ?? 0) >= 85): ?>
-                  <span class="text-success">Excellent!</span> Your class is performing exceptionally well with an average of <?= number_format($analytics['classAverage'], 1) ?>%.
-                <?php elseif (($analytics['classAverage'] ?? 0) >= 75): ?>
-                  <span class="text-warning">Good progress!</span> Class average is <?= number_format($analytics['classAverage'], 1) ?>%. Consider targeted support for struggling students.
-                <?php else: ?>
-                  <span class="text-danger">Needs attention.</span> Class average is <?= number_format($analytics['classAverage'], 1) ?>%. Implement intervention strategies.
-                <?php endif; ?>
-              </p>
+
+      <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center py-2">
+          <strong class="small">Top Performers</strong>
+          <small class="text-muted">Latest 5</small>
+        </div>
+        <div class="card-body p-0">
+          <?php if (!empty($analytics['studentPerformance'])): ?>
+            <?php
+            usort($analytics['studentPerformance'], function($a, $b) {
+              return $b['average'] <=> $a['average'];
+            });
+            ?>
+            <ul class="list-group list-group-flush">
+              <?php foreach (array_slice($analytics['studentPerformance'], 0, 5) as $s): ?>
+                <li class="list-group-item py-2 d-flex justify-content-between align-items-center">
+                  <span class="small text-truncate" style="max-width: 170px;">
+                    <?= esc($s['name']) ?>
+                  </span>
+                  <small class="text-muted"><?= number_format($s['average'], 1) ?>%</small>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+          <?php else: ?>
+            <p class="text-muted m-2 small">No student data available.</p>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header py-2"><strong class="small">Subject Averages</strong></div>
+        <div class="card-body py-2">
+          <?php if (!empty($analytics['subjectAverages'])): ?>
+            <?php foreach (array_slice($analytics['subjectAverages'], 0, 4) as $subject): ?>
+              <div class="metric-row">
+                <span><?= esc(substr($subject['subject'], 0, 15)) ?><?= strlen($subject['subject']) > 15 ? '...' : '' ?></span>
+                <strong><?= number_format($subject['average'], 1) ?>%</strong>
+              </div>
+            <?php endforeach; ?>
+          <?php else: ?>
+            <div class="metric-row mb-0">
+              <span class="text-muted small">No subject data available</span>
+              <strong>-</strong>
             </div>
-          </div>
-          <div class="col-md-4">
-            <div class="border-start border-success border-4 ps-3 mb-3">
-              <h6 class="text-success mb-1">Attendance Impact</h6>
-              <p class="mb-0 small">
-                High attendance rate of <?= number_format($analytics['attendanceRate'], 1) ?>% correlates with better academic performance.
-                Continue encouraging regular attendance.
-              </p>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="border-start border-info border-4 ps-3 mb-3">
-              <h6 class="text-info mb-1">Subject Focus</h6>
-              <p class="mb-0 small">
-                <?php if (!empty($analytics['subjectAverages'])): ?>
-                  <?php
-                  $lowestSubject = array_reduce($analytics['subjectAverages'], function($carry, $item) {
-                    return (!$carry || $item['average'] < $carry['average']) ? $item : $carry;
-                  });
-                  ?>
-                  Consider additional support for <strong><?= esc($lowestSubject['subject']) ?></strong>
-                  (<?= number_format($lowestSubject['average'], 1) ?>% average).
-                <?php else: ?>
-                  Start entering grades to see subject-specific recommendations.
-                <?php endif; ?>
-              </p>
-            </div>
-          </div>
+          <?php endif; ?>
+          <small class="text-muted d-block mt-1 small">SY: <?= $schoolYear ?? '2024-2025' ?></small>
         </div>
       </div>
     </div>
@@ -434,6 +316,8 @@
 </div>
 
 <?php endif; ?>
+
+
 
 <!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -443,6 +327,10 @@
 const gradeDistribution = <?= json_encode($analytics['gradeDistribution'] ?? []) ?>;
 const quarterTrends = <?= json_encode($analytics['quarterTrends'] ?? []) ?>;
 const subjectAverages = <?= json_encode($analytics['subjectAverages'] ?? []) ?>;
+const attendanceStats = <?= json_encode($analytics['attendanceStats'] ?? []) ?>;
+const analytics = <?= json_encode($analytics ?? []) ?>;
+const schoolYear = '<?= $schoolYear ?? '2024-2025' ?>';
+const currentQuarter = '<?= $currentQuarter ?? '1' ?>';
 
 // Grade Distribution Doughnut Chart
 function initGradeDistributionChart() {
@@ -569,14 +457,14 @@ function exportAnalytics() {
   // Create a simple text report
   let report = 'CLASS ANALYTICS REPORT\n';
   report += '======================\n\n';
-  report += 'School Year: <?= $schoolYear ?>\n';
-  report += 'Quarter: <?= $currentQuarter ?>\n';
+  report += 'School Year: ' + (schoolYear || '2024-2025') + '\n';
+  report += 'Quarter: ' + (currentQuarter || '1') + '\n';
   report += 'Generated: ' + new Date().toLocaleDateString() + '\n\n';
 
   report += 'SUMMARY STATISTICS:\n';
-  report += '- Total Students: <?= $analytics["totalStudents"] ?? 0 ?>\n';
-  report += '- Class Average: <?= number_format($analytics["classAverage"] ?? 0, 1) ?>%\n';
-  report += '- Attendance Rate: <?= number_format($analytics["attendanceRate"] ?? 0, 1) ?>%\n\n';
+  report += '- Total Students: ' + (analytics.totalStudents || 0) + '\n';
+  report += '- Class Average: ' + (analytics.classAverage || 0).toFixed(1) + '%\n';
+  report += '- Attendance Rate: ' + (analytics.attendanceRate || 0).toFixed(1) + '%\n\n';
 
   report += 'GRADE DISTRIBUTION:\n';
   report += '- Excellent (90-100): ' + (gradeDistribution.excellent || 0) + ' students\n';
@@ -605,14 +493,119 @@ function exportAnalytics() {
   window.URL.revokeObjectURL(url);
 }
 
+// Attendance Chart
+function initAttendanceChart() {
+  const ctx = document.getElementById('attendanceChart').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Present', 'Absent', 'Late', 'Excused'],
+      datasets: [{
+        data: [
+          attendanceStats.present || 0,
+          attendanceStats.absent || 0,
+          attendanceStats.late || 0,
+          attendanceStats.excused || 0
+        ],
+        backgroundColor: [
+          '#10b981', // Present - Green
+          '#ef4444', // Absent - Red
+          '#f59e0b', // Late - Yellow
+          '#3b82f6'  // Excused - Blue
+        ],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            usePointStyle: true,
+            padding: 10,
+            font: {
+              size: 10
+            }
+          }
+        }
+      },
+      cutout: '50%'
+    }
+  });
+}
+
+// Performance Trends Chart (Area Chart)
+function initPerformanceChart() {
+  const ctx = document.getElementById('performanceChart').getContext('2d');
+  
+  // Mock monthly performance data
+  const monthlyData = [78, 82, 85, 87, 84, 88];
+  const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
+  
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{
+        label: 'Class Performance',
+        data: monthlyData,
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        borderWidth: 3,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#8b5cf6',
+        pointBorderColor: '#ffffff',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: false,
+          min: 70,
+          max: 95,
+          grid: {
+            color: 'rgba(0,0,0,0.1)'
+          },
+          ticks: {
+            callback: function(value) {
+              return value + '%';
+            }
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: false
+        }
+      }
+    }
+  });
+}
+
+
+
 // Initialize charts when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
   initGradeDistributionChart();
   initQuarterTrendsChart();
+  initAttendanceChart();
+  initPerformanceChart();
 });
 </script>
-
-</div> <!-- Close analytics-page-content -->
 
 <?= $this->endSection() ?>
 

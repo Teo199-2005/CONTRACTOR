@@ -1,6 +1,29 @@
 <?= $this->extend('dashboard_layout') ?>
 <?= $this->section('content') ?>
 
+<style>
+.section-status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+}
+.section-assigned {
+    background-color: #d1e7dd;
+    color: #0f5132;
+    border: 1px solid #badbcc;
+}
+.section-unassigned {
+    background-color: #fff3cd;
+    color: #664d03;
+    border: 1px solid #ffecb5;
+}
+.section-na {
+    background-color: #e2e3e5;
+    color: #41464b;
+    border: 1px solid #c4c8cc;
+}
+</style>
+
 <div class="d-flex justify-content-between align-items-center mb-3">
   <h1 class="h4 mb-0">Manage Users</h1>
   <div>
@@ -21,6 +44,7 @@
               <th>ID</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Section Status</th>
               <th>Created</th>
               <th>Actions</th>
             </tr>
@@ -28,16 +52,31 @@
           <tbody>
             <?php foreach ($users as $u): ?>
             <tr>
-              <td><?= esc($u->id) ?></td>
-              <td><?= esc($u->email) ?></td>
+              <td><?= esc($u['id']) ?></td>
+              <td><?= esc($u['email']) ?></td>
+              <td><?= esc($u['user_role']) ?></td>
               <td>
-                <?php $groups = $u->getGroups(); ?>
-                <?= !empty($groups) ? esc($groups[0]) : 'No Role' ?>
+                <?php if ($u['user_role'] === 'student'): ?>
+                  <?php if ($u['section_assigned']): ?>
+                    <span class="section-status-badge section-assigned">
+                      <i class="bi bi-check-circle me-1"></i>Assigned: <?= esc($u['section_name']) ?>
+                    </span>
+                  <?php else: ?>
+                    <span class="section-status-badge section-unassigned">
+                      <i class="bi bi-exclamation-triangle me-1"></i>No Section Assigned
+                    </span>
+                  <?php endif; ?>
+                <?php else: ?>
+                  <span class="section-status-badge section-na">N/A</span>
+                <?php endif; ?>
               </td>
-              <td><?= esc($u->created_at) ?></td>
+              <td><?= esc($u['created_at']) ?></td>
               <td>
-                <a href="<?= base_url('admin/users/edit/' . $u->id) ?>" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
-                <a href="<?= base_url('admin/users/delete/' . $u->id) ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this user?')"><i class="bi bi-trash"></i></a>
+                <a href="<?= base_url('admin/users/edit/' . $u['id']) ?>" class="btn btn-sm btn-outline-primary me-1" title="Edit User"><i class="bi bi-pencil"></i></a>
+                <?php if ($u['user_role'] === 'student' && !$u['section_assigned']): ?>
+                  <a href="<?= base_url('admin/students') ?>" class="btn btn-sm btn-outline-warning me-1" title="Assign Section"><i class="bi bi-person-plus"></i></a>
+                <?php endif; ?>
+                <a href="<?= base_url('admin/users/delete/' . $u['id']) ?>" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this user?')" title="Delete User"><i class="bi bi-trash"></i></a>
               </td>
             </tr>
             <?php endforeach; ?>

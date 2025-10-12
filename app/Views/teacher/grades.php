@@ -36,7 +36,7 @@
                             <option value="">Select Student</option>
                             <?php foreach ($students as $student): ?>
                                 <option value="<?= $student['id'] ?>">
-                                    <?= esc($student['student_id']) ?> - <?= esc($student['first_name'] . ' ' . $student['last_name']) ?>
+                                    <?= esc($student['student_id'] ?? $student['lrn'] ?? 'N/A') ?> - <?= esc($student['first_name'] . ' ' . $student['last_name']) ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -119,8 +119,25 @@
     
     <!-- Student Grades Table -->
     <div class="card mt-4">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
             <h5 class="card-title mb-0">Student Grades - Quarter <?= $currentQuarter ?></h5>
+            <div class="d-flex gap-2">
+                <select class="form-select form-select-sm" id="sectionFilter" style="width: auto;">
+                    <option value="">All Sections</option>
+                    <?php 
+                    $sections = [];
+                    foreach ($students as $student) {
+                        $sectionKey = $student['grade_level'] . ' - ' . $student['section_name'];
+                        if (!in_array($sectionKey, $sections)) {
+                            $sections[] = $sectionKey;
+                        }
+                    }
+                    sort($sections);
+                    foreach ($sections as $section): ?>
+                        <option value="<?= esc($section) ?>"><?= esc($section) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -135,10 +152,11 @@
                     </thead>
                     <tbody>
                         <?php foreach ($students as $student): ?>
-                            <tr>
+                            <tr data-section="<?= esc($student['grade_level'] . ' - ' . $student['section_name']) ?>">
                                 <td>
                                     <strong><?= esc($student['first_name'] . ' ' . $student['last_name']) ?></strong><br>
-                                    <small class="text-muted"><?= esc($student['student_id']) ?></small>
+                                    <small class="text-muted"><?= esc($student['student_id'] ?? $student['lrn'] ?? 'N/A') ?></small><br>
+                                    <span class="badge bg-secondary"><?= esc($student['grade_level'] . ' - ' . $student['section_name']) ?></span>
                                 </td>
                                 <?php foreach ($subjects as $subject): ?>
                                     <td>
@@ -158,6 +176,33 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Pagination -->
+        <?php if ($totalPages > 1): ?>
+        <div class="card-footer">
+            <nav>
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $currentPage - 1 ?>">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </a>
+                    </li>
+                    
+                    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+                        <li class="page-item <?= $i == $currentPage ? 'active' : '' ?>">
+                            <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                        </li>
+                    <?php endfor; ?>
+                    
+                    <li class="page-item <?= $currentPage >= $totalPages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?page=<?= $currentPage + 1 ?>">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
     
 <?php else: ?>
@@ -176,4 +221,25 @@
     </div>
 <?php endif; ?>
 
-<?= $this->endSection() ?> 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sectionFilter = document.getElementById('sectionFilter');
+    const tableRows = document.querySelectorAll('tbody tr[data-section]');
+    
+    if (sectionFilter) {
+        sectionFilter.addEventListener('change', function() {
+            const selectedSection = this.value;
+            
+            tableRows.forEach(row => {
+                if (selectedSection === '' || row.dataset.section === selectedSection) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+</script>
+
+<?= $this->endSection() ?>

@@ -17,6 +17,7 @@ class SampleTeachersSeeder extends Seeder
         $teachers = [
             [
                 'teacher_id' => '2025-0001',
+                'license_number' => '1234567',
                 'first_name' => 'Annabel',
                 'middle_name' => '',
                 'last_name' => 'Portades',
@@ -35,6 +36,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0002',
+                'license_number' => '2345678',
                 'first_name' => 'Aiza',
                 'middle_name' => '',
                 'last_name' => 'Sabordo',
@@ -53,6 +55,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0003',
+                'license_number' => '3456789',
                 'first_name' => 'Christine',
                 'middle_name' => 'E.',
                 'last_name' => 'Lumabe',
@@ -71,6 +74,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0004',
+                'license_number' => '4567890',
                 'first_name' => 'Charito',
                 'middle_name' => '',
                 'last_name' => 'Malapo',
@@ -89,6 +93,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0005',
+                'license_number' => '5678901',
                 'first_name' => 'Elaine',
                 'middle_name' => 'S.',
                 'last_name' => 'Oida',
@@ -107,6 +112,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0006',
+                'license_number' => '6789012',
                 'first_name' => 'Elisa',
                 'middle_name' => '',
                 'last_name' => 'Ereno',
@@ -125,6 +131,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0007',
+                'license_number' => '7890123',
                 'first_name' => 'Joven',
                 'middle_name' => 'F.',
                 'last_name' => 'Labilles',
@@ -143,6 +150,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0008',
+                'license_number' => '8901234',
                 'first_name' => 'Laila',
                 'middle_name' => 'N.',
                 'last_name' => 'Salvadora',
@@ -161,6 +169,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0009',
+                'license_number' => '9012345',
                 'first_name' => 'Maricar',
                 'middle_name' => 'B.',
                 'last_name' => 'Sapugay',
@@ -179,6 +188,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0010',
+                'license_number' => '0123456',
                 'first_name' => 'Midlyn',
                 'middle_name' => 'B.',
                 'last_name' => 'Castillo',
@@ -197,6 +207,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0011',
+                'license_number' => '1357924',
                 'first_name' => 'Nathan David',
                 'middle_name' => '',
                 'last_name' => 'Dolorical',
@@ -215,6 +226,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0012',
+                'license_number' => '2468135',
                 'first_name' => 'Roselle',
                 'middle_name' => 'A.',
                 'last_name' => 'Plotado',
@@ -233,6 +245,7 @@ class SampleTeachersSeeder extends Seeder
             ],
             [
                 'teacher_id' => '2025-0013',
+                'license_number' => '9876543',
                 'first_name' => 'Jeanette',
                 'middle_name' => 'S.',
                 'last_name' => 'Rodriguez',

@@ -194,8 +194,7 @@ class GradeModel extends Model
             'very_good' => 0, // 85-89
             'good' => 0,      // 80-84
             'fair' => 0,      // 75-79
-            'passing' => 0,   // 70-74
-            'failing' => 0    // Below 70
+            'failing' => 0    // Below 75
         ];
 
         foreach ($grades as $grade) {
@@ -209,8 +208,6 @@ class GradeModel extends Model
                 $distribution['good']++;
             } elseif ($gradeValue >= 75) {
                 $distribution['fair']++;
-            } elseif ($gradeValue >= 70) {
-                $distribution['passing']++;
             } else {
                 $distribution['failing']++;
             }
