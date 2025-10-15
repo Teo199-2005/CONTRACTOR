@@ -76,6 +76,7 @@
         <h5 class="text-muted mb-0"><?= date('F j, Y', strtotime($selectedDate)) ?></h5>
     </div>
     <div class="d-flex gap-2 align-items-center">
+        <input type="date" class="form-control" value="<?= $selectedDate ?>" onchange="changeDate(this.value)" style="width: 160px;">
         <div class="btn-group" role="group">
             <button type="button" class="btn btn-outline-secondary btn-sm" id="gridViewBtn" onclick="toggleView('grid')">
                 <i class="bi bi-grid-3x3-gap"></i>
@@ -83,6 +84,9 @@
             <button type="button" class="btn btn-outline-secondary btn-sm" id="listViewBtn" onclick="toggleView('list')">
                 <i class="bi bi-list"></i>
             </button>
+            <a href="<?= base_url('teacher/attendance/history') ?>" class="btn btn-warning btn-sm" style="font-weight: 600; box-shadow: 0 2px 4px rgba(255,193,7,0.3);">
+                <i class="bi bi-clock-history me-1"></i>View History
+            </a>
         </div>
         <select class="form-select" id="sectionFilter" style="width: 220px; font-weight: 500; border: 2px solid #0d6efd;">
             <option value="">All Sections</option>
@@ -251,6 +255,8 @@
     </div>
 <?php endif; ?>
 
+
+
 <script>
 function setStatus(studentId, status) {
     // Update hidden input
@@ -373,6 +379,13 @@ function setStatusList(studentId, status, button) {
     
     updateCounts();
 }
+
+// Change date function
+function changeDate(date) {
+    window.location.href = '<?= base_url('teacher/attendance') ?>?date=' + date;
+}
+
+
 </script>
 
 <?= $this->endSection() ?>

@@ -459,24 +459,20 @@
             <h5 class="section-title">Required Documents (PDF/JPG/PNG)</h5>
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Birth Certificate</label>
-              <input type="file" class="form-control" name="birth_certificate" accept=".pdf,.jpg,.jpeg,.png" />
+              <label class="form-label">Birth Certificate *</label>
+              <input type="file" class="form-control" name="birth_certificate" accept=".pdf,.jpg,.jpeg,.png" required />
             </div>
             <div class="col-md-6">
-              <label class="form-label">Report Card (Form 138)</label>
-              <input type="file" class="form-control" name="report_card" accept=".pdf,.jpg,.jpeg,.png" />
+              <label class="form-label">Report Card (Form 138) *</label>
+              <input type="file" class="form-control" name="report_card" accept=".pdf,.jpg,.jpeg,.png" required />
             </div>
             <div class="col-md-6">
-              <label class="form-label">Good Moral Certificate</label>
-              <input type="file" class="form-control" name="good_moral" accept=".pdf,.jpg,.jpeg,.png" />
+              <label class="form-label">Good Moral Certificate *</label>
+              <input type="file" class="form-control" name="good_moral" accept=".pdf,.jpg,.jpeg,.png" required />
             </div>
             <div class="col-md-6">
-              <label class="form-label">Medical Certificate</label>
-              <input type="file" class="form-control" name="medical_certificate" accept=".pdf,.jpg,.jpeg,.png" />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">2x2 Photo</label>
-              <input type="file" class="form-control" name="photo" accept=".jpg,.jpeg,.png" />
+              <label class="form-label">2x2 Photo *</label>
+              <input type="file" class="form-control" name="photo" accept=".jpg,.jpeg,.png" required />
             </div>
           </div>
 
@@ -580,7 +576,11 @@
           const emptyFields = [];
 
           requiredFields.forEach(field => {
-            if (!field.value.trim()) {
+            if (field.type === 'file') {
+              if (!field.files.length) {
+                emptyFields.push(field.previousElementSibling.textContent.replace(' *', ''));
+              }
+            } else if (!field.value.trim()) {
               emptyFields.push(field.previousElementSibling.textContent.replace(' *', ''));
             }
           });

@@ -57,52 +57,120 @@
 <!-- Blue Divider -->
 <div class="blue-divider mb-4"></div>
 
-<!-- Next Semester Enrollment -->
-<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 <?= $canEnrollNextSemester ? 'border-success' : 'border-danger' ?>">
+<!-- Next School Year Enrollment -->
+<?php 
+// Check if student has completed all quarters (Q1-Q4) with passing grades
+$hasAllQuarters = true;
+$allQuartersPassed = true;
+for ($q = 1; $q <= 4; $q++) {
+    if (!isset($allQuarterGrades[$q]) || $allQuarterGrades[$q] === null) {
+        $hasAllQuarters = false;
+        break;
+    }
+    if ($allQuarterGrades[$q] < 75) {
+        $allQuartersPassed = false;
+    }
+}
+
+$canEnrollNextYear = $hasAllQuarters && $allQuartersPassed && $gwa >= 75;
+$nextGradeLevel = isset($student['grade_level']) ? $student['grade_level'] + 1 : null;
+?>
+
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4 <?= $canEnrollNextYear ? 'border-success' : 'border-warning' ?>">
   <div class="card-body p-3">
     <div class="row align-items-center">
       <div class="col-lg-8">
         <h4 class="card-title mb-2 small">
           <i class="bi bi-calendar-plus me-2 text-primary"></i>
-          Next Semester Enrollment
+          Next School Year Enrollment
         </h4>
 
-        <?php if ($canEnrollNextSemester): ?>
+        <?php if ($canEnrollNextYear): ?>
           <p class="text-success mb-2 small">
             <i class="bi bi-check-circle-fill me-2"></i>
-            <strong>Congratulations!</strong> You are eligible to enroll for the next semester.
-            Your GWA of <strong><?= number_format($gwa, 2) ?></strong> meets the minimum requirement of 75.00.
+            <strong>Congratulations!</strong> You have completed all quarters with passing grades.
+            You are eligible to enroll for Grade <?= $nextGradeLevel ?> next school year.
           </p>
 
           <div class="mb-2">
             <small class="text-muted">
               <i class="bi bi-info-circle me-1"></i>
-              Enrollment requirements: GWA ≥ 75.00 | Current GWA: <?= number_format($gwa, 2) ?>
+              Requirements: Complete Q1-Q4 with GWA ≥ 75.00 | Your GWA: <?= number_format($gwa, 2) ?>
+            </small>
+          </div>
+        <?php elseif (!$hasAllQuarters): ?>
+          <p class="text-warning mb-2 small">
+            <i class="bi bi-clock-fill me-2"></i>
+            <strong>Enrollment Pending:</strong> You need to complete all quarters (Q1-Q4) before you can enroll for the next school year.
+          </p>
+
+          <div class="mb-2">
+            <small class="text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              Missing quarters: 
+              <?php 
+              $missing = [];
+              for ($q = 1; $q <= 4; $q++) {
+                  if (!isset($allQuarterGrades[$q]) || $allQuarterGrades[$q] === null) {
+                      $missing[] = "Q$q";
+                  }
+              }
+              echo implode(', ', $missing);
+              ?>
             </small>
           </div>
         <?php else: ?>
           <p class="text-danger mb-2 small">
             <i class="bi bi-x-circle-fill me-2"></i>
-            <strong>Enrollment Restricted:</strong> Your current GWA of
-            <strong><?= $gwa !== null ? number_format($gwa, 2) : 'N/A' ?></strong>
-            is below the minimum requirement of 75.00 for next semester enrollment.
+            <strong>Enrollment Restricted:</strong> You have failing grades in some quarters.
+            Your GWA of <strong><?= number_format($gwa, 2) ?></strong> is below the minimum requirement of 75.00.
           </p>
 
           <div class="mb-2">
             <small class="text-muted">
               <i class="bi bi-exclamation-triangle me-1"></i>
-              You need to improve your grades to at least 75.00 GWA to be eligible for enrollment.
+              You need to retake failed subjects or improve your grades to be eligible for promotion.
             </small>
           </div>
         <?php endif; ?>
       </div>
 
       <div class="col-lg-4 text-lg-end">
-        <?php if ($canEnrollNextSemester): ?>
-          <a href="<?= base_url('student/enrollment') ?>" class="btn btn-success px-3 py-2" style="position: relative; z-index: 999; font-weight: 600;">
+        <?php 
+        // Check if already applied
+        $db = \Config\Database::connect();
+        $studentId = $student['id'] ?? 1;
+        $hasApplied = false;
+        $applicationStatus = '';
+        
+        if ($db->tableExists('next_year_applications')) {
+            $existing = $db->table('next_year_applications')
+                ->where('student_id', $studentId)
+                ->where('school_year', '2026-2027')
+                ->get()->getRow();
+            if ($existing) {
+                $hasApplied = true;
+                $applicationStatus = $existing->status;
+            }
+        }
+        ?>
+        
+        <?php if ($hasApplied): ?>
+          <div class="text-center">
+            <span class="badge bg-info px-3 py-2 mb-2">
+              <i class="bi bi-clock-history me-2"></i>
+              Application Submitted
+            </span>
+            <div class="small text-muted">
+              Status: <strong><?= ucfirst($applicationStatus) ?></strong><br>
+              Waiting for admin approval
+            </div>
+          </div>
+        <?php elseif ($canEnrollNextYear): ?>
+          <button class="btn btn-success px-3 py-2" onclick="submitNextYearEnrollment()" style="position: relative; z-index: 999; font-weight: 600;">
             <i class="bi bi-check-circle me-2"></i>
-            Enroll for Next Semester
-          </a>
+            Apply for Grade <?= $nextGradeLevel ?>
+          </button>
         <?php else: ?>
           <button class="btn btn-secondary btn-sm px-3" disabled>
             <i class="bi bi-lock me-2"></i>
@@ -114,39 +182,73 @@
 
     <!-- Additional Info -->
     <div class="row mt-2 pt-2 border-top">
-      <div class="col-md-6">
+      <div class="col-md-12 text-center">
         <small class="text-muted">
-          <strong>Academic Standing:</strong>
-          <?php if ($gwa !== null): ?>
-            <?php if ($gwa >= 95): ?>
-              <span class="text-success">Summa Cum Laude</span>
-            <?php elseif ($gwa >= 90): ?>
-              <span class="text-success">Magna Cum Laude</span>
-            <?php elseif ($gwa >= 85): ?>
-              <span class="text-info">Cum Laude</span>
-            <?php elseif ($gwa >= 75): ?>
-              <span class="text-warning">Good Standing</span>
-            <?php else: ?>
-              <span class="text-danger">Academic Probation</span>
-            <?php endif; ?>
-          <?php else: ?>
-            <span class="text-muted">Not Available</span>
-          <?php endif; ?>
-        </small>
-      </div>
-      <div class="col-md-6 text-md-end">
-        <small class="text-muted">
-          <strong>Next Semester:</strong>
+          <strong>Next School Year:</strong>
           <?php
             $currentYear = date('Y');
-            $nextSemester = ($currentYear + 1) . '-' . ($currentYear + 2);
+            $nextSchoolYear = ($currentYear + 1) . '-' . ($currentYear + 2);
           ?>
-          <?= $nextSemester ?>
+          <?= $nextSchoolYear ?>
         </small>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+function submitNextYearEnrollment() {
+    console.log('Starting application submission...');
+    
+    <?php if ($hasApplied): ?>
+        alert('You have already submitted an application for next school year.');
+        return;
+    <?php endif; ?>
+    
+    if (confirm('Submit your application for Grade <?= $nextGradeLevel ?> enrollment for the next school year?')) {
+        const requestData = {
+            next_grade_level: <?= $nextGradeLevel ?>,
+            current_gwa: <?= $gwa ?>
+        };
+        
+        console.log('Request data:', requestData);
+        console.log('URL:', '<?= base_url('student/apply-next-year') ?>');
+        
+        fetch('<?= base_url('student/apply-next-year') ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            
+            if (data.success) {
+                alert(data.message || 'Your application for Grade <?= $nextGradeLevel ?> has been submitted to the admin for review!');
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Failed to submit application. Please try again.'));
+            }
+        })
+        .catch(error => {
+            console.error('Fetch error:', error);
+            alert('Network error: ' + error.message + '. Please check your connection and try again.');
+        });
+    }
+}
+</script>
 
 <!-- Quarter Selection -->
 <div class="card bg-white border-0 shadow-sm rounded-3 mb-4">
@@ -155,15 +257,15 @@
       <div class="col-md-4">
         <label class="form-label small fw-medium">School Year</label>
         <select name="school_year" class="form-select form-select-sm">
-          <option value="2023-2024" <?= $schoolYear === '2023-2024' ? 'selected' : '' ?>>2023-2024</option>
           <option value="2024-2025" <?= $schoolYear === '2024-2025' ? 'selected' : '' ?>>2024-2025</option>
           <option value="2025-2026" <?= $schoolYear === '2025-2026' ? 'selected' : '' ?>>2025-2026</option>
           <option value="2026-2027" <?= $schoolYear === '2026-2027' ? 'selected' : '' ?>>2026-2027</option>
+          <option value="2027-2028" <?= $schoolYear === '2027-2028' ? 'selected' : '' ?>>2027-2028</option>
         </select>
       </div>
       <div class="col-md-4">
         <label class="form-label small fw-medium">Quarter</label>
-        <select name="quarter" class="form-select form-select-sm">
+        <select name="quarter" class="form-select form-select-sm" onchange="this.form.submit()">
           <?php for ($q=1; $q<=4; $q++): ?>
             <option value="<?= $q ?>" <?= ((int)$quarter===$q?'selected':'') ?>>
               Quarter <?= $q ?>
@@ -195,7 +297,6 @@
           <tr>
             <th class="border-0 fw-medium small">Subject</th>
             <th class="border-0 fw-medium small">Code</th>
-            <th class="border-0 fw-medium small">Units</th>
             <th class="border-0 fw-medium small text-center">Grade</th>
             <th class="border-0 fw-medium small">Remarks</th>
           </tr>
@@ -209,9 +310,6 @@
                 </td>
                 <td class="py-2">
                   <span class="badge bg-light text-dark small"><?= esc($row['subject']['subject_code']) ?></span>
-                </td>
-                <td class="py-2">
-                  <span class="text-muted small"><?= esc($row['subject']['units']) ?> units</span>
                 </td>
                 <td class="py-2 text-center">
                   <?php if ($row['grade'] && $row['grade']['grade'] !== null): ?>
@@ -237,7 +335,7 @@
             <?php endforeach; ?>
           <?php else: ?>
             <tr>
-              <td colspan="5" class="text-center py-4 text-muted">
+              <td colspan="4" class="text-center py-4 text-muted">
                 <i class="bi bi-inbox fs-1 d-block mb-2 text-muted"></i>
                 <small>No grades recorded for this quarter yet.</small>
               </td>

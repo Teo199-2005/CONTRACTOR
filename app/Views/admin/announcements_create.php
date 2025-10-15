@@ -80,7 +80,6 @@
                   <option value="admin" <?= old('target_roles') === 'admin' ? 'selected' : '' ?>>Administrators</option>
                   <option value="teacher" <?= old('target_roles') === 'teacher' ? 'selected' : '' ?>>Teachers</option>
                   <option value="student" <?= old('target_roles') === 'student' ? 'selected' : '' ?>>Students</option>
-                  <option value="parent" <?= old('target_roles') === 'parent' ? 'selected' : '' ?>>Parents</option>
                 </select>
                 <label for="target_roles">Target Audience *</label>
               </div>

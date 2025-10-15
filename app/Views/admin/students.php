@@ -4,9 +4,12 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h1 class="h3">Manage Students</h1>
   <div>
-    <button class="btn btn-primary me-2" onclick="openEnrollStudentModal()">
+    <a href="<?= base_url('admin/students/archived') ?>" class="btn btn-outline-info me-2">
+      <i class="bi bi-archive"></i> Archived Students
+    </a>
+    <a href="<?= base_url('admin/students/enroll') ?>" class="btn btn-primary me-2">
       <i class="bi bi-plus-circle"></i> Enroll Student
-    </button>
+    </a>
     <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-outline-secondary">Back</a>
   </div>
 </div>
@@ -16,7 +19,7 @@
     <label class="form-label">Grade</label>
     <select name="grade" class="form-select" onchange="this.form.submit()">
       <option value="">All</option>
-      <?php for ($g=7; $g<=10; $g++): ?>
+      <?php for ($g=7; $g<=12; $g++): ?>
         <option value="<?= $g ?>" <?= ($gradeLevel==$g?'selected':'') ?>>Grade <?= $g ?></option>
       <?php endfor; ?>
     </select>
@@ -69,7 +72,7 @@
                 <td>Grade <?= esc($st['grade_level']) ?></td>
                 <td>
                   <?php if (empty($st['section_name'])): ?>
-                    <span class="text-warning">
+                    <span class="text-danger">
                       <i class="bi bi-exclamation-triangle me-1"></i>
                       Not assigned
                     </span>
@@ -91,8 +94,8 @@
                     <button class="btn btn-sm btn-outline-warning" onclick="editStudent(<?= $st['id'] ?>)" title="Edit Student">
                       <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteStudent(<?= $st['id'] ?>, '<?= esc($st['first_name'] . ' ' . $st['last_name']) ?>')" title="Delete Student">
-                      <i class="bi bi-trash"></i>
+                    <button class="btn btn-sm btn-outline-warning" onclick="archiveStudent(<?= $st['id'] ?>, '<?= esc($st['first_name'] . ' ' . $st['last_name']) ?>')" title="Archive Student">
+                      <i class="bi bi-archive"></i>
                     </button>
                   </div>
                 </td>
@@ -224,6 +227,8 @@
                 <option value="8">Grade 8</option>
                 <option value="9">Grade 9</option>
                 <option value="10">Grade 10</option>
+                <option value="11">Grade 11</option>
+                <option value="12">Grade 12</option>
               </select>
             </div>
           </div>
@@ -962,25 +967,68 @@ function buildEnrollStudentModal() {
 
   const html = `
   <div class="modal fade" id="enrollStudentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg"><div class="modal-content">
+    <div class="modal-dialog modal-xl"><div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Enroll New Student</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <div class="d-flex align-items-center">
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <button type="button" class="btn btn-info btn-sm position-absolute" style="top: 15px; right: 50px; z-index: 1000;" onclick="fillDemoData()">Demo Fill</button>
       </div>
-      <form id="enrollStudentForm" method="post" action="<?= base_url('admin/students/store') ?>">
+      <form id="enrollStudentForm" method="post" action="<?= base_url('admin/students/store') ?>" enctype="multipart/form-data">
         <?= str_replace(["\n","\r"], '', csrf_field()) ?>
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          <h6 class="text-primary mb-3">Account Information</h6>
           <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">LRN</label>
+                <input type="text" class="form-control" name="lrn" placeholder="Auto-generated if empty">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" name="email" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Password *</label>
+                <div style="position: relative;">
+                  <input type="password" class="form-control" name="password" required minlength="8">
+                  <button type="button" id="toggleEnrollPassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; color: #6c757d;">
+                    <i class="fas fa-eye" id="enrollEyeIcon"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <h6 class="text-primary mb-3">Personal Information</h6>
+          <div class="row">
+            <div class="col-md-3">
               <div class="mb-3">
                 <label class="form-label">First Name *</label>
                 <input type="text" class="form-control" name="first_name" required>
               </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Middle Name</label>
+                <input type="text" class="form-control" name="middle_name">
+              </div>
+            </div>
+            <div class="col-md-3">
               <div class="mb-3">
                 <label class="form-label">Last Name *</label>
                 <input type="text" class="form-control" name="last_name" required>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="mb-3">
+                <label class="form-label">Suffix</label>
+                <input type="text" class="form-control" name="suffix" placeholder="Jr., Sr., III">
               </div>
             </div>
           </div>
@@ -997,6 +1045,42 @@ function buildEnrollStudentModal() {
             </div>
             <div class="col-md-4">
               <div class="mb-3">
+                <label class="form-label">Date of Birth *</label>
+                <input type="date" class="form-control" name="date_of_birth" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Place of Birth</label>
+                <input type="text" class="form-control" name="place_of_birth">
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Nationality</label>
+                <input type="text" class="form-control" name="nationality" value="Filipino">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Religion</label>
+                <input type="text" class="form-control" name="religion">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Contact Number</label>
+                <input type="text" class="form-control" name="contact_number">
+              </div>
+            </div>
+          </div>
+          <hr>
+          <h6 class="text-primary mb-3">Academic Information</h6>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
                 <label class="form-label">Grade Level *</label>
                 <select class="form-select" name="grade_level" required>
                   <option value="">Select Grade</option>
@@ -1004,27 +1088,27 @@ function buildEnrollStudentModal() {
                   <option value="8">Grade 8</option>
                   <option value="9">Grade 9</option>
                   <option value="10">Grade 10</option>
+                  <option value="11">Grade 11</option>
+                  <option value="12">Grade 12</option>
                 </select>
               </div>
             </div>
             <div class="col-md-4">
               <div class="mb-3">
-                <label class="form-label">Date of Birth *</label>
-                <input type="date" class="form-control" name="date_of_birth" required>
+                <label class="form-label">Student Type *</label>
+                <select class="form-select" name="student_type" required>
+                  <option value="">Select Type</option>
+                  <option value="New Student">New Student</option>
+                  <option value="Transferee">Transferee</option>
+                </select>
               </div>
             </div>
-          </div>
-          <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-4">
               <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" name="email">
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="mb-3">
-                <label class="form-label">Contact Number</label>
-                <input type="text" class="form-control" name="contact_number">
+                <label class="form-label">Section</label>
+                <select class="form-select" name="section_id">
+                  <option value="">No Section Assigned</option>
+                </select>
               </div>
             </div>
           </div>
@@ -1033,24 +1117,54 @@ function buildEnrollStudentModal() {
             <textarea class="form-control" name="address" rows="2"></textarea>
           </div>
           <hr>
-          <h6 class="text-primary mb-3">Emergency Contact Information</h6>
+          <h6 class="text-primary mb-3">Required Documents</h6>
           <div class="row">
             <div class="col-md-6">
               <div class="mb-3">
-                <label class="form-label">Emergency Contact Name *</label>
-                <input type="text" class="form-control" name="emergency_contact_name" required>
+                <label class="form-label">Birth Certificate *</label>
+                <input type="file" class="form-control" name="birth_certificate" accept=".pdf,.jpg,.jpeg,.png" required>
               </div>
             </div>
             <div class="col-md-6">
               <div class="mb-3">
-                <label class="form-label">Emergency Contact Number *</label>
-                <input type="text" class="form-control" name="emergency_contact_number" required>
+                <label class="form-label">Report Card (Form 138) *</label>
+                <input type="file" class="form-control" name="report_card" accept=".pdf,.jpg,.jpeg,.png" required>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Good Moral Certificate *</label>
+                <input type="file" class="form-control" name="good_moral" accept=".pdf,.jpg,.jpeg,.png" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">2x2 Photo *</label>
+                <input type="file" class="form-control" name="photo" accept=".jpg,.jpeg,.png" required>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <h6 class="text-primary mb-3">Emergency Contact</h6>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Emergency Contact Name</label>
+                <input type="text" class="form-control" name="emergency_contact_name">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Emergency Contact Number</label>
+                <input type="text" class="form-control" name="emergency_contact_number">
               </div>
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label">Relationship *</label>
-            <select class="form-select" name="emergency_contact_relationship" required>
+            <label class="form-label">Relationship</label>
+            <select class="form-select" name="emergency_contact_relationship">
               <option value="">Select Relationship</option>
               <option value="Father">Father</option>
               <option value="Mother">Mother</option>
@@ -1064,7 +1178,7 @@ function buildEnrollStudentModal() {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="background-color: #374151 !important; border-color: #374151 !important;">Cancel</button>
           <button type="submit" class="btn btn-primary">Enroll Student</button>
         </div>
       </form>
@@ -1091,28 +1205,142 @@ document.addEventListener('submit', function(e) {
       method: 'POST',
       body: formData
     })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
+    .then(response => {
+      if (!response.ok) {
+        return response.text().then(text => {
+          throw new Error(`HTTP ${response.status}: ${text}`);
+        });
+      }
+      return response.text();
+    })
+    .then(text => {
+      // Check if it's a successful redirect (HTML response)
+      if (text.includes('<!doctype html>') || text.includes('<html')) {
         bootstrap.Modal.getInstance(document.getElementById('enrollStudentModal')).hide();
         alert('Student enrolled successfully!');
         location.reload();
-      } else {
-        alert('Error: ' + (data.error || 'Failed to enroll student'));
+        return;
+      }
+      
+      try {
+        const data = JSON.parse(text);
+        if (data.success) {
+          bootstrap.Modal.getInstance(document.getElementById('enrollStudentModal')).hide();
+          alert('Student enrolled successfully!');
+          location.reload();
+        } else {
+          alert('Error: ' + (data.error || data.message || 'Failed to enroll student'));
+        }
+      } catch (e) {
+        alert('Error: Unable to process server response');
       }
     })
     .catch(error => {
       console.error('Error:', error);
-      alert('Failed to enroll student');
+      alert('Network Error: ' + error.message);
     });
   }
 });
 
-// Delete student function
-function deleteStudent(studentId, studentName) {
-  if (confirm(`Are you sure you want to delete student "${studentName}"? This action cannot be undone.`)) {
-    fetch(`<?= base_url('admin/students/delete') ?>/${studentId}`, {
-      method: 'DELETE',
+// Password toggle functionality for enrollment modal
+document.addEventListener('click', function(e) {
+  if (e.target.id === 'toggleEnrollPassword' || e.target.id === 'enrollEyeIcon') {
+    const passwordInput = document.querySelector('#enrollStudentModal [name="password"]');
+    const eyeIcon = document.getElementById('enrollEyeIcon');
+    
+    if (passwordInput && eyeIcon) {
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.className = 'fas fa-eye-slash';
+      } else {
+        passwordInput.type = 'password';
+        eyeIcon.className = 'fas fa-eye';
+      }
+    }
+  }
+});
+
+// Demo fill function for enrollment modal
+function fillDemoData() {
+  const form = document.getElementById('enrollStudentForm');
+  if (!form) return;
+  
+  // Demo data arrays for randomization
+  const firstNames = ['Juan', 'Maria', 'Jose', 'Ana', 'Carlos', 'Sofia', 'Miguel', 'Isabella', 'Luis', 'Carmen', 'Pedro', 'Lucia', 'Antonio', 'Elena', 'Francisco'];
+  const middleNames = ['Santos', 'Cruz', 'Reyes', 'Garcia', 'Lopez', 'Martinez', 'Gonzalez', 'Rodriguez', 'Fernandez', 'Morales', 'Jimenez', 'Herrera', 'Medina', 'Castro', 'Ortiz'];
+  const lastNames = ['Dela Cruz', 'Santos', 'Garcia', 'Reyes', 'Lopez', 'Martinez', 'Gonzalez', 'Rodriguez', 'Fernandez', 'Morales', 'Jimenez', 'Herrera', 'Medina', 'Castro', 'Ortiz'];
+  const suffixes = ['', '', '', 'Jr.', 'Sr.', 'III', ''];
+  const genders = ['Male', 'Female'];
+  const gradeLevels = ['7', '8', '9', '10', '11', '12'];
+  const studentTypes = ['New Student', 'Transferee'];
+  const places = ['Tagbilaran City, Bohol', 'Panglao, Bohol', 'Dauis, Bohol', 'Baclayon, Bohol', 'Loboc, Bohol', 'Carmen, Bohol', 'Tubigon, Bohol'];
+  const religions = ['Catholic', 'Protestant', 'Iglesia ni Cristo', 'Baptist', 'Methodist', 'Born Again', 'Seventh-day Adventist'];
+  const relationships = ['Mother', 'Father', 'Guardian', 'Aunt', 'Uncle', 'Grandmother', 'Grandfather'];
+  const barangays = ['Poblacion', 'Tawala', 'Bolod', 'Danao', 'Tangnan', 'Libaong', 'Lourdes'];
+  const emailDomains = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com'];
+  
+  // Helper functions
+  const getRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const getRandomBirthDate = () => {
+    const today = new Date();
+    const age = Math.floor(Math.random() * 7) + 11;
+    const birthYear = today.getFullYear() - age;
+    const birthMonth = Math.floor(Math.random() * 12) + 1;
+    const birthDay = Math.floor(Math.random() * 28) + 1;
+    return `${birthYear}-${birthMonth.toString().padStart(2, '0')}-${birthDay.toString().padStart(2, '0')}`;
+  };
+  const getRandomPhone = () => {
+    const prefixes = ['0917', '0918', '0919', '0920', '0921', '0922', '0923', '0924', '0925', '0926', '0927', '0928', '0929'];
+    return getRandom(prefixes) + Math.floor(Math.random() * 10000000).toString().padStart(7, '0');
+  };
+  
+  // Generate random data
+  const firstName = getRandom(firstNames);
+  const middleName = getRandom(middleNames);
+  const lastName = getRandom(lastNames);
+  const suffix = getRandom(suffixes);
+  const gender = getRandom(genders);
+  const gradeLevel = getRandom(gradeLevels);
+  const studentType = getRandom(studentTypes);
+  const birthDate = getRandomBirthDate();
+  const placeOfBirth = getRandom(places);
+  const religion = getRandom(religions);
+  const contactNumber = getRandomPhone();
+  const emergencyContactNumber = getRandomPhone();
+  const relationship = getRandom(relationships);
+  const randomLRN = '999' + Date.now().toString().slice(-9);
+  const emailUsername = (firstName + lastName).toLowerCase().replace(/\s+/g, '');
+  const email = emailUsername + Math.floor(Math.random() * 999) + '@' + getRandom(emailDomains);
+  const address = `Purok ${Math.floor(Math.random() * 10) + 1}, Barangay ${getRandom(barangays)}, Panglao, Bohol`;
+  const emergencyContactName = getRandom(firstNames) + ' ' + getRandom(lastNames);
+  
+  // Fill form fields
+  form.querySelector('[name="lrn"]').value = randomLRN;
+  form.querySelector('[name="email"]').value = email;
+  form.querySelector('[name="password"]').value = 'Demo123!';
+  form.querySelector('[name="first_name"]').value = firstName;
+  form.querySelector('[name="middle_name"]').value = middleName;
+  form.querySelector('[name="last_name"]').value = lastName;
+  form.querySelector('[name="suffix"]').value = suffix;
+  form.querySelector('[name="gender"]').value = gender;
+  form.querySelector('[name="date_of_birth"]').value = birthDate;
+  form.querySelector('[name="place_of_birth"]').value = placeOfBirth;
+  form.querySelector('[name="nationality"]').value = 'Filipino';
+  form.querySelector('[name="religion"]').value = religion;
+  form.querySelector('[name="contact_number"]').value = contactNumber;
+  form.querySelector('[name="grade_level"]').value = gradeLevel;
+  form.querySelector('[name="student_type"]').value = studentType;
+  form.querySelector('[name="address"]').value = address;
+  form.querySelector('[name="emergency_contact_name"]').value = emergencyContactName;
+  form.querySelector('[name="emergency_contact_number"]').value = emergencyContactNumber;
+  form.querySelector('[name="emergency_contact_relationship"]').value = relationship;
+}
+
+// Archive student function
+function archiveStudent(studentId, studentName) {
+  if (confirm(`Are you sure you want to archive student "${studentName}"? They will be moved to archived students.`)) {
+    fetch(`<?= base_url('admin/students/archive') ?>/${studentId}`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
@@ -1129,7 +1357,7 @@ function deleteStudent(studentId, studentName) {
     })
     .catch(error => {
       console.error('Error:', error);
-      alert('Failed to delete student');
+      alert('Failed to archive student');
     });
   }
 }

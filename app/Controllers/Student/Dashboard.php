@@ -87,7 +87,7 @@ class Dashboard extends BaseController
         $student = null;
         $quarterAverage = null;
         $currentQuarter = $this->getCurrentQuarter();
-        $schoolYear = '2024-2025';
+        $schoolYear = '2025-2026';
 
         try {
             if ($this->auth->loggedIn() && $this->auth->user()->inGroup('student')) {
@@ -106,17 +106,17 @@ class Dashboard extends BaseController
             // Fall back to test data if there's an error
         }
 
-        // Use test data if no real student found
+        // Use test data if no real student found - match teacher's Grade 7 class
         if (!$student) {
             $student = [
                 'id' => 1,
-                'first_name' => 'Test',
+                'first_name' => 'Demo',
                 'last_name' => 'Student',
-                'lrn' => '2024-001',
-                'grade_level' => 10,
-                'section' => 'Grade 10-A',
+                'lrn' => '123456789001',
+                'grade_level' => 7,
+                'section_name' => 'Aphrodite',
                 'enrollment_status' => 'enrolled',
-                'email' => 'test.student@example.com',
+                'email' => 'demo.student@example.com',
                 'contact_number' => '+63 912 345 6789',
                 'address' => '123 Test Street, Test City',
                 'emergency_contact_name' => 'Test Parent',
@@ -125,7 +125,7 @@ class Dashboard extends BaseController
             ];
             // Use sample data if no real grades
             if ($quarterAverage === null) {
-                $quarterAverage = 85.5;
+                $quarterAverage = null; // No grades yet
             }
         }
 
@@ -184,29 +184,29 @@ class Dashboard extends BaseController
         if (!$this->auth->loggedIn()) {
             if ($this->isDevTestMode()) {
                 // Render grades page with sample data in development/test
-                $schoolYear = $this->request->getGet('school_year') ?? '2024-2025';
+                $schoolYear = $this->request->getGet('school_year') ?? '2025-2026';
                 $quarter = (int)($this->request->getGet('quarter') ?? 1);
 
-                // Sample grades data for testing
-                $sampleGrades = $this->getSampleGradesData();
+                // Sample grades data for testing - Grade 7 student
+                $sampleGrades = $this->getSampleGrade7Data();
 
                 return view('student/grades', [
                     'title' => 'My Grades - LPHS SMS',
                     'student' => [
                         'id' => 1,
-                        'first_name' => 'Test',
+                        'first_name' => 'Demo',
                         'last_name' => 'Student',
-                        'lrn' => '2024-001',
-                        'grade_level' => 10,
+                        'lrn' => '123456789001',
+                        'grade_level' => 7,
                         'enrollment_status' => 'enrolled'
                     ],
                     'grades' => $sampleGrades,
-                    'schoolYear' => $schoolYear,
-                    'quarter' => $quarter,
+                    'schoolYear' => '2025-2026',
+                    'quarter' => 2,
                     'quarterAverage' => 85.5,
-                    'gwa' => 86.2,
+                    'gwa' => 84.75,
                     'canEnrollNextSemester' => true,
-                    'allQuarterGrades' => $this->getSampleAllQuarterGrades(),
+                    'allQuarterGrades' => [1 => 86.2, 2 => 85.1, 3 => 83.8, 4 => 83.9],
                 ]);
             }
             return redirect()->to(base_url('login'));
@@ -224,8 +224,8 @@ class Dashboard extends BaseController
         $gradeModel = new GradeModel();
         $subjectModel = new SubjectModel();
 
-        $schoolYear = $this->request->getGet('school_year') ?? '2024-2025';
-        $quarter = $this->request->getGet('quarter') ?? $this->getCurrentQuarter();
+        $schoolYear = $this->request->getGet('school_year') ?? '2025-2026';
+        $quarter = $this->request->getGet('quarter') ?? 2; // Current quarter
 
         // Get subjects for student's grade level
         $subjects = $subjectModel->getByGradeLevel($student['grade_level']);
@@ -260,6 +260,13 @@ class Dashboard extends BaseController
 
         // Check if student can enroll for next semester (GWA must be 75 or above)
         $canEnrollNextSemester = ($gwa !== null && $gwa >= 75.0);
+        
+        // For demo mode, provide sample data if no real grades
+        if ($gwa === null && $this->isDevTestMode()) {
+            $gwa = 84.75;
+            $allQuarterGrades = [1 => 86.2, 2 => 85.1, 3 => 83.8, 4 => 83.9];
+            $canEnrollNextSemester = true;
+        }
 
         return view('student/grades', [
             'title' => 'My Grades - LPHS SMS',
@@ -416,6 +423,47 @@ class Dashboard extends BaseController
     }
 
     /**
+     * Get sample Grade 7 data for testing (no grades yet)
+     */
+    private function getSampleGrade7Data()
+    {
+        return [
+            [
+                'subject' => ['id' => 1, 'subject_name' => 'Araling Panlipunan 7', 'subject_code' => 'AP7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 2, 'subject_name' => 'Edukasyon sa Pagpapakatao 7', 'subject_code' => 'ESP7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 3, 'subject_name' => 'English 7', 'subject_code' => 'ENG7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 4, 'subject_name' => 'Filipino 7', 'subject_code' => 'FIL7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 5, 'subject_name' => 'MAPEH 7', 'subject_code' => 'MAPEH7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 6, 'subject_name' => 'Mathematics 7', 'subject_code' => 'MATH7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 7, 'subject_name' => 'Science 7', 'subject_code' => 'SCI7', 'units' => 1.0],
+                'grade' => null
+            ],
+            [
+                'subject' => ['id' => 8, 'subject_name' => 'Technology and Livelihood Education 7', 'subject_code' => 'TLE7', 'units' => 1.0],
+                'grade' => null
+            ]
+        ];
+    }
+
+    /**
      * Get sample grades data for testing
      */
     private function getSampleGradesData()
@@ -472,5 +520,87 @@ class Dashboard extends BaseController
     {
         // Handle enrollment form submission
         return redirect()->to(base_url('student/enrollment'))->with('success', 'Enrollment application submitted successfully!');
+    }
+
+    public function applyNextYear()
+    {
+        // Handle AJAX request for next year enrollment
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'error' => 'Invalid request']);
+        }
+
+        try {
+            $input = json_decode($this->request->getBody(), true);
+            $nextGradeLevel = $input['next_grade_level'] ?? null;
+            $currentGwa = $input['current_gwa'] ?? null;
+
+            if (!$nextGradeLevel || !$currentGwa) {
+                return $this->response->setJSON(['success' => false, 'error' => 'Missing required data']);
+            }
+
+            // Get student record - try multiple approaches
+            $student = null;
+            $db = \Config\Database::connect();
+            
+            // Try to get authenticated student first
+            if ($this->auth->loggedIn()) {
+                $student = $this->getStudentRecord();
+            }
+            
+            // Fallback: try to find student by LRN 100000000001 for demo
+            if (!$student) {
+                $student = $db->table('students')
+                    ->where('lrn', '100000000001')
+                    ->get()->getRowArray();
+            }
+
+            if (!$student) {
+                return $this->response->setJSON(['success' => false, 'error' => 'Student record not found']);
+            }
+
+            // Check if table exists first
+            if (!$db->tableExists('next_year_applications')) {
+                return $this->response->setJSON(['success' => false, 'error' => 'Database table not found. Please contact administrator.']);
+            }
+
+            // Check if already applied
+            $existing = $db->table('next_year_applications')
+                ->where('student_id', $student['id'])
+                ->where('school_year', '2026-2027')
+                ->get()->getRow();
+
+            if ($existing) {
+                return $this->response->setJSON(['success' => false, 'error' => 'You have already applied for next school year']);
+            }
+
+            // Insert application
+            $applicationData = [
+                'student_id' => $student['id'],
+                'current_grade_level' => $student['grade_level'],
+                'next_grade_level' => $nextGradeLevel,
+                'gwa' => $currentGwa,
+                'school_year' => '2026-2027',
+                'status' => 'pending',
+                'applied_at' => date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            $result = $db->table('next_year_applications')->insert($applicationData);
+            
+            if (!$result) {
+                $error = $db->error();
+                return $this->response->setJSON(['success' => false, 'error' => 'Failed to save application: ' . $error['message']]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Application submitted successfully! The admin will review your application for Grade ' . $nextGradeLevel . '.'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Next year application error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+        }
     }
 }

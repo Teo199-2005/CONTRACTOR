@@ -1574,21 +1574,29 @@
     <div class="row g-0">
       <div class="col-lg-6 principal-content">
         <div class="principal-info scroll-animate-left">
-          <h3 class="principal-name">Dr. Maria Elena Santos</h3>
-          <p class="principal-title">School Principal</p>
-          <p class="principal-message">"Welcome to Lourdes Provincial High School, where we nurture young minds to become globally competitive yet deeply rooted in Filipino values. Our commitment to excellence in education, combined with innovative technology, ensures that every student receives the quality education they deserve. Together, we build not just academic success, but character and leadership for tomorrow's Philippines."</p>
+          <h3 class="principal-name">Janeth Bulacan Serafico</h3>
+          <p class="principal-title">School Head</p>
+          <p class="principal-message">"Welcome to Lourdes Provincial High School, where we are committed to nurturing young minds with excellence and integrity. With nearly three decades of dedicated service in public education, I believe in the transformative power of quality education that is both accessible and innovative. As a module writer, podcast creator, and voice talent for Radio-Based Instruction, I am passionate about making education accessible to all. Together, we shape not just academic achievers, but responsible citizens who will contribute meaningfully to our community and nation."</p>
           <div class="principal-banners">
             <div class="banner-item">
               <i class="bi bi-award-fill"></i>
-              <span>Excellence in Education Award 2023</span>
+              <span>29 Years DepEd Service</span>
             </div>
             <div class="banner-item">
               <i class="bi bi-people-fill"></i>
-              <span>15+ Years Educational Leadership</span>
+              <span>BADISESTEA & ASSTEBD President</span>
             </div>
             <div class="banner-item">
               <i class="bi bi-mortarboard-fill"></i>
-              <span>PhD in Educational Management</span>
+              <span>MA Education - Administration & Supervision</span>
+            </div>
+            <div class="banner-item">
+              <i class="bi bi-broadcast"></i>
+              <span>RBI Module Writer & Voice Talent</span>
+            </div>
+            <div class="banner-item">
+              <i class="bi bi-geo-alt-fill"></i>
+              <span>Camarines Sur District Coordinator</span>
             </div>
           </div>
         </div>
@@ -1596,7 +1604,7 @@
       <div class="col-lg-6">
         <div class="container h-100 d-flex align-items-center">
           <div class="principal-image scroll-animate-right">
-            <img src="https://images.pexels.com/photos/5212317/pexels-photo-5212317.jpeg?auto=compress&cs=tinysrgb&w=600" alt="Dr. Maria Elena Santos" class="img-fluid rounded-3">
+            <img src="<?= base_url('principal.jpg') ?>" alt="Janeth Bulacan Serafico" class="img-fluid rounded-3" style="border: 4px solid #1e40af; width: 100%; max-width: 500px; height: 500px; object-fit: cover;">
           </div>
         </div>
       </div>
@@ -1835,20 +1843,20 @@
         
         <!-- Predictions Info -->
         <div class="chart-info-card">
-          <h6 class="info-title">AI-Powered Forecasting Engine</h6>
-          <p class="info-text">Advanced machine learning algorithms analyze historical enrollment data, demographic trends, economic indicators, and academic program popularity to generate accurate enrollment predictions. Our AI system considers multiple variables including population growth, educational policy changes, program demand fluctuations, and seasonal patterns to provide reliable forecasts for strategic planning. These predictions help administrators optimize classroom capacity, staff allocation, budget planning, and infrastructure development to ensure LPHS can accommodate future student populations effectively.</p>
+          <h6 class="info-title">Enrollment Projection System</h6>
+          <p class="info-text">Statistical analysis of historical enrollment patterns and demographic trends to generate enrollment projections. Our system considers factors including population growth, educational policy changes, program demand fluctuations, and seasonal patterns to provide estimates for strategic planning. These projections help administrators plan classroom capacity, staff allocation, budget planning, and infrastructure development to accommodate future student populations.</p>
           <div class="info-stats">
             <div class="stat-item">
-              <i class="bi bi-cpu text-success"></i>
-              <span>Machine Learning Algorithms</span>
+              <i class="bi bi-graph-up text-success"></i>
+              <span>Statistical Analysis</span>
             </div>
             <div class="stat-item">
-              <i class="bi bi-graph-up-arrow text-success"></i>
-              <span>3-Year Forecast Accuracy: 94%</span>
+              <i class="bi bi-calendar text-success"></i>
+              <span>Historical Data Trends</span>
             </div>
             <div class="stat-item">
-              <i class="bi bi-database text-success"></i>
-              <span>Multi-Variable Analysis</span>
+              <i class="bi bi-calculator text-success"></i>
+              <span>Projection Modeling</span>
             </div>
           </div>
         </div>

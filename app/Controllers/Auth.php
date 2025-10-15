@@ -57,27 +57,41 @@ class Auth extends BaseController
         
         $user = null;
         
-        // Check if it's a teacher (PRC license)
-        $teacher = $teacherModel->where('license_number', $identifier)->first();
+        // Check if it's a teacher (PRC license or email)
+        $teacher = $teacherModel->where('license_number', $identifier)
+                                ->orWhere('email', $identifier)
+                                ->first();
+        
+        // Debug logging
+        log_message('info', 'Login attempt - Identifier: ' . $identifier);
+        log_message('info', 'Teacher found: ' . ($teacher ? 'Yes (ID: ' . $teacher['id'] . ', User ID: ' . ($teacher['user_id'] ?? 'NULL') . ')' : 'No'));
+        
         if ($teacher && $teacher['user_id']) {
             $user = $userModel->find($teacher['user_id']);
+            log_message('info', 'User found from teacher: ' . ($user ? 'Yes (ID: ' . $user->id . ')' : 'No'));
         }
         
         // Check if it's a student (LRN)
         if (!$user) {
             $student = $studentModel->where('lrn', $identifier)->first();
+            log_message('info', 'Student found by LRN: ' . ($student ? 'Yes (ID: ' . $student['id'] . ', User ID: ' . ($student['user_id'] ?? 'NULL') . ')' : 'No'));
             if ($student && $student['user_id']) {
                 $user = $userModel->find($student['user_id']);
+                log_message('info', 'User found from student: ' . ($user ? 'Yes (ID: ' . $user->id . ')' : 'No'));
             }
         }
         
-        // Check admin by email (fallback for admin accounts)
+        // Check by email (fallback for all user types)
         if (!$user && filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
             $user = $userModel->where('email', $identifier)->first();
         }
         
         if (!$user) {
-            return redirect()->back()->withInput()->with('error', 'Invalid PRC license number, LRN, or password.');
+            log_message('info', 'Login failed - No user found for identifier: ' . $identifier);
+            // Also check what teachers exist in database for debugging
+            $allTeachers = $teacherModel->select('id, first_name, last_name, license_number, email')->findAll();
+            log_message('info', 'All teachers in database: ' . json_encode($allTeachers));
+            return redirect()->back()->withInput()->with('error', 'Invalid PRC license number, LRN, email, or password.');
         }
         
         // Get password hash from auth_identities
@@ -88,8 +102,25 @@ class Auth extends BaseController
             ->get()
             ->getRow();
         
-        if (!$identity || !password_verify($password, $identity->secret)) {
-            return redirect()->back()->withInput()->with('error', 'Invalid PRC license number, LRN, or password.');
+        log_message('info', 'Auth identity found: ' . ($identity ? 'Yes (Name: ' . $identity->name . ')' : 'No'));
+        if ($identity) {
+            log_message('info', 'Password verification: ' . (password_verify($password, $identity->secret2) ? 'Success' : 'Failed'));
+        }
+        
+        if (!$identity || !password_verify($password, $identity->secret2)) {
+            log_message('info', 'Login failed - Invalid credentials for user ID: ' . $user->id);
+            return redirect()->back()->withInput()->with('error', 'Invalid PRC license number, LRN, email, or password.');
+        }
+        
+        // Handle remember me functionality
+        if ($remember) {
+            // Set cookies for 30 days
+            setcookie('remembered_identifier', $identifier, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+            setcookie('remembered_password', $password, time() + (30 * 24 * 60 * 60), '/', '', false, true);
+        } else {
+            // Clear remember me cookies if not checked
+            setcookie('remembered_identifier', '', time() - 3600, '/', '', false, true);
+            setcookie('remembered_password', '', time() - 3600, '/', '', false, true);
         }
         
         // Ensure user is active
@@ -370,6 +401,212 @@ class Auth extends BaseController
     }
 
     /**
+     * Debug student authentication data
+     */
+    public function debugStudent($identifier = null)
+    {
+        if (!$identifier) {
+            $identifier = $this->request->getGet('identifier') ?? 'teofiloharry6969@gmail.com';
+        }
+
+        $studentModel = model('StudentModel');
+        $userModel = model(UserModel::class);
+        $db = \Config\Database::connect();
+
+        $data = [
+            'identifier' => $identifier,
+            'timestamp' => date('Y-m-d H:i:s')
+        ];
+
+        // Find student by email or LRN
+        $student = $studentModel->where('email', $identifier)
+                               ->orWhere('lrn', $identifier)
+                               ->first();
+        
+        $data['student_found'] = $student ? 'Yes' : 'No';
+        if ($student) {
+            $data['student_data'] = [
+                'id' => $student['id'],
+                'lrn' => $student['lrn'],
+                'email' => $student['email'],
+                'user_id' => $student['user_id'],
+                'enrollment_status' => $student['enrollment_status'],
+                'first_name' => $student['first_name'],
+                'last_name' => $student['last_name']
+            ];
+
+            // Find user record
+            if ($student['user_id']) {
+                $user = $userModel->find($student['user_id']);
+                $data['user_found'] = $user ? 'Yes' : 'No';
+                if ($user) {
+                    $data['user_data'] = [
+                        'id' => $user->id,
+                        'email' => $user->email,
+                        'active' => $user->active
+                    ];
+
+                    // Check auth_identities
+                    $identity = $db->table('auth_identities')
+                        ->where('user_id', $user->id)
+                        ->where('type', 'email_password')
+                        ->get()
+                        ->getRow();
+                    
+                    $data['auth_identity_found'] = $identity ? 'Yes' : 'No';
+                    if ($identity) {
+                        $data['auth_identity_data'] = [
+                            'name' => $identity->name,
+                            'type' => $identity->type,
+                            'secret_length' => strlen($identity->secret),
+                            'created_at' => $identity->created_at
+                        ];
+                    }
+
+                    // Check user groups
+                    $groups = $db->table('auth_groups_users')
+                        ->where('user_id', $user->id)
+                        ->get()
+                        ->getResult();
+                    
+                    $data['user_groups'] = array_map(function($g) { return $g->group; }, $groups);
+                }
+            }
+        }
+
+        return $this->response->setJSON($data);
+    }
+
+    /**
+     * Fix student authentication - update missing name field in auth_identities
+     */
+    public function fixStudent($identifier = null)
+    {
+        if (!$identifier) {
+            $identifier = $this->request->getGet('identifier') ?? 'teofiloharry6969@gmail.com';
+        }
+
+        $studentModel = model('StudentModel');
+        $userModel = model(UserModel::class);
+        $db = \Config\Database::connect();
+
+        // Find student by email or LRN
+        $student = $studentModel->where('email', $identifier)
+                               ->orWhere('lrn', $identifier)
+                               ->first();
+        
+        if (!$student) {
+            return $this->response->setJSON(['error' => 'Student not found']);
+        }
+
+        $user = $userModel->find($student['user_id']);
+        if (!$user) {
+            return $this->response->setJSON(['error' => 'User not found']);
+        }
+
+        // Update auth_identities name field (remove mailto: prefix if present)
+        $cleanEmail = str_replace('mailto:', '', $user->email);
+        $result = $db->table('auth_identities')
+            ->where('user_id', $user->id)
+            ->where('type', 'email_password')
+            ->update([
+                'name' => $cleanEmail,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+        if ($result) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Student authentication fixed successfully',
+                'updated_email' => $user->email
+            ]);
+        } else {
+            return $this->response->setJSON(['error' => 'Failed to update auth_identities']);
+        }
+    }
+
+    /**
+     * Reset student password
+     */
+    public function resetStudentPassword($identifier = null)
+    {
+        $identifier = $identifier ?? $this->request->getGet('identifier') ?? 'teofiloharry6969@gmail.com';
+        $newPassword = $this->request->getGet('password') ?? 'hayato2020';
+
+        $studentModel = model('StudentModel');
+        $userModel = model(UserModel::class);
+        $db = \Config\Database::connect();
+
+        // Find student
+        $student = $studentModel->where('email', $identifier)
+                               ->orWhere('lrn', $identifier)
+                               ->first();
+        
+        if (!$student) {
+            return $this->response->setJSON(['error' => 'Student not found']);
+        }
+
+        // Update password in auth_identities
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $result = $db->table('auth_identities')
+            ->where('user_id', $student['user_id'])
+            ->where('type', 'email_password')
+            ->update([
+                'secret' => $hashedPassword,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+        if ($result) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Password reset successfully',
+                'new_password' => $newPassword
+            ]);
+        } else {
+            return $this->response->setJSON(['error' => 'Failed to reset password']);
+        }
+    }
+
+    /**
+     * Fix corrupted user email field
+     */
+    public function fixUserEmail($identifier = null)
+    {
+        $identifier = $identifier ?? $this->request->getGet('identifier') ?? 'teofiloharry6969@gmail.com';
+
+        $studentModel = model('StudentModel');
+        $userModel = model(UserModel::class);
+        $db = \Config\Database::connect();
+
+        // Find student
+        $student = $studentModel->where('email', $identifier)
+                               ->orWhere('lrn', $identifier)
+                               ->first();
+        
+        if (!$student) {
+            return $this->response->setJSON(['error' => 'Student not found']);
+        }
+
+        // Update user email field to correct email
+        $result = $db->table('users')
+            ->where('id', $student['user_id'])
+            ->update([
+                'email' => $student['email'],
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+        if ($result) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'User email fixed successfully',
+                'correct_email' => $student['email']
+            ]);
+        } else {
+            return $this->response->setJSON(['error' => 'Failed to fix user email']);
+        }
+    }
+
+    /**
      * Get dashboard URL based on user role
      */
     private function getDashboardUrl(): string
@@ -450,7 +687,7 @@ class Auth extends BaseController
             'photo' => 'photo',
         ];
 
-        $uploadBase = WRITEPATH . 'uploads/enrollment/' . $studentId;
+        $uploadBase = FCPATH . 'uploads/enrollment_documents';
         if (!is_dir($uploadBase)) {
             @mkdir($uploadBase, 0775, true);
         }
@@ -471,10 +708,10 @@ class Auth extends BaseController
                 continue;
             }
 
-            $newName = $type . '_' . time() . '_' . $file->getRandomName();
+            $newName = $file->getRandomName();
             $file->move($uploadBase, $newName);
 
-            $relativePath = 'uploads/enrollment/' . $studentId . '/' . $newName;
+            $relativePath = $newName;
 
             $docModel->insert([
                 'student_id' => $studentId,

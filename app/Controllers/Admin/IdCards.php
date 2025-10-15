@@ -33,10 +33,9 @@ class IdCards extends BaseController
         $page = (int) ($this->request->getGet('page') ?? 1);
         $perPage = 9;
 
-        // Build query with filters
+        // Build query with filters - include all students, not just enrolled
         $builder = $studentModel->select('students.*, sections.section_name')
-            ->join('sections', 'sections.id = students.section_id', 'left')
-            ->where('students.enrollment_status', 'enrolled');
+            ->join('sections', 'sections.id = students.section_id', 'left');
 
         if ($gradeFilter) {
             $builder->where('students.grade_level', $gradeFilter);
@@ -59,18 +58,26 @@ class IdCards extends BaseController
         $totalPages = ceil($totalStudents / $perPage);
         $offset = ($page - 1) * $perPage;
 
-        $students = $builder->orderBy('students.last_name', 'ASC')
-            ->orderBy('students.first_name', 'ASC')
+        $students = $builder->orderBy('students.created_at', 'DESC')
             ->limit($perPage, $offset)
             ->get()
             ->getResultArray();
 
-        // Get student photos
+        // Get student photos - check both enrollment documents and photo_path field
         foreach ($students as &$student) {
+            // First try to get from enrollment documents
             $photo = $documentModel->where('student_id', $student['id'])
                 ->where('document_type', 'photo')
                 ->first();
-            $student['photo_path'] = $photo ? $photo['file_path'] : null;
+            
+            if ($photo) {
+                $student['photo'] = $photo['file_path'];
+            } elseif (!empty($student['photo_path'])) {
+                // Fallback to photo_path field in students table
+                $student['photo'] = $student['photo_path'];
+            } else {
+                $student['photo'] = null;
+            }
         }
 
         // Get all sections for filter dropdown
@@ -115,11 +122,49 @@ class IdCards extends BaseController
         $photo = $documentModel->where('student_id', $studentId)
             ->where('document_type', 'photo')
             ->first();
-        $student['photo_path'] = $photo ? $photo['file_path'] : null;
+        $student['photo'] = $photo ? $photo['file_path'] : null;
 
         return view('admin/id_card_view', [
             'title' => 'Student ID Card - ' . $student['first_name'] . ' ' . $student['last_name'],
             'student' => $student
         ]);
+    }
+
+    public function generateLrn($studentId)
+    {
+        if (! $this->auth->user()->inGroup('admin')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $studentModel = new StudentModel();
+        $student = $studentModel->find($studentId);
+
+        if (!$student) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Student not found']);
+        }
+
+        if ($student['lrn']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Student already has an LRN']);
+        }
+
+        // Generate unique LRN
+        $lastStudent = $studentModel->select('lrn')
+            ->orderBy('lrn', 'DESC')
+            ->first();
+        
+        if ($lastStudent && is_numeric($lastStudent['lrn'])) {
+            $nextNumber = intval($lastStudent['lrn']) + 1;
+        } else {
+            $nextNumber = 100000000001; // Start with 12-digit LRN
+        }
+        
+        $newLrn = (string)$nextNumber;
+        $updated = $studentModel->update($studentId, ['lrn' => $newLrn]);
+
+        if ($updated) {
+            return $this->response->setJSON(['success' => true, 'lrn' => $newLrn]);
+        } else {
+            return $this->response->setJSON(['success' => false, 'message' => 'Failed to update student']);
+        }
     }
 }

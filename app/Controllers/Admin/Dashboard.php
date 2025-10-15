@@ -42,8 +42,9 @@ class Dashboard extends BaseController
             'total_announcements' => $announcementModel->countAllResults()
         ];
 
-        // Get recent enrollments
-        $recentEnrollments = $studentModel->where('enrollment_status', 'pending')
+        // Get recent enrollments (all statuses)
+        $recentEnrollments = $studentModel->select('students.*, users.email')
+            ->join('users', 'users.id = students.user_id', 'left')
             ->orderBy('created_at', 'DESC')
             ->limit(5)
             ->findAll();
@@ -278,8 +279,14 @@ class Dashboard extends BaseController
 
     public function sections()
     {
-        if (!$this->auth->user()->inGroup('admin')) {
+        if (!$this->auth->user() || !$this->auth->user()->inGroup('admin')) {
             return redirect()->to(base_url('/'));
+        }
+
+        // Auto-fix sections if cleanup parameter is present
+        if ($this->request->getGet('cleanup') === 'true') {
+            $this->cleanupSections();
+            return redirect()->to(base_url('admin/sections'))->with('success', 'Sections cleaned up successfully!');
         }
 
         $sectionModel = new SectionModel();
@@ -332,6 +339,28 @@ class Dashboard extends BaseController
             'adviserFilter' => $adviserFilter,
             'searchTerm' => $searchTerm
         ]);
+    }
+
+    private function cleanupSections()
+    {
+        $db = \Config\Database::connect();
+        
+        // Find wrong section
+        $wrongSection = $db->query("SELECT id FROM sections WHERE section_name = 'Grade 10 - Aristotle'")->getRowArray();
+        $correctSection = $db->query("SELECT id FROM sections WHERE section_name = 'Aristotle'")->getRowArray();
+        $aphroditeSection = $db->query("SELECT id FROM sections WHERE section_name = 'Aphrodite'")->getRowArray();
+        
+        if ($wrongSection && $correctSection) {
+            // Move students from wrong section to correct section
+            $db->query("UPDATE students SET section_id = ? WHERE section_id = ?", [$correctSection['id'], $wrongSection['id']]);
+            // Delete wrong section
+            $db->query("DELETE FROM sections WHERE id = ?", [$wrongSection['id']]);
+        }
+        
+        if ($correctSection && $aphroditeSection) {
+            // Move Grade 10 students from Aphrodite to Aristotle
+            $db->query("UPDATE students SET section_id = ? WHERE (grade_level = 10 OR lrn LIKE 'DEMO-STUDENT-%') AND section_id = ?", [$correctSection['id'], $aphroditeSection['id']]);
+        }
     }
 
     public function assignAdviser($sectionId)
@@ -677,7 +706,7 @@ class Dashboard extends BaseController
             $avgRows = $db->table('grades')
                 ->select('students.grade_level as grade_level, AVG(grades.grade) as avg_grade')
                 ->join('students', 'students.id = grades.student_id', 'left')
-                ->where('grades.school_year', '2024-2025')
+                ->where('grades.school_year', '2025-2026')
                 ->where('grades.quarter', 1)
                 ->where('grades.grade IS NOT NULL')
                 ->groupBy('students.grade_level')
@@ -798,7 +827,7 @@ class Dashboard extends BaseController
             $avgRows = $db->table('grades')
                 ->select('students.grade_level as grade_level, AVG(grades.grade) as avg_grade')
                 ->join('students', 'students.id = grades.student_id', 'left')
-                ->where('grades.school_year', '2024-2025')
+                ->where('grades.school_year', '2025-2026')
                 ->where('grades.quarter', 1)
                 ->where('grades.grade IS NOT NULL')
                 ->groupBy('students.grade_level')
@@ -821,7 +850,7 @@ class Dashboard extends BaseController
             'metrics' => $metrics,
             'gradeAverages' => $gradeAverages,
             'reportDate' => date('F j, Y'),
-            'schoolYear' => '2024-2025'
+            'schoolYear' => '2025-2026'
         ];
 
         $html = view('admin/analytics_pdf', $data);
@@ -1015,51 +1044,83 @@ class Dashboard extends BaseController
 
     public function createAdmin()
     {
+        // Enhanced authorization check
         if (!$this->auth->user()->inGroup('admin')) {
+            log_message('warning', 'Unauthorized admin creation attempt from user ID: ' . ($this->auth->id() ?? 'unknown'));
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
         }
 
+        // CSRF protection
+        if (!$this->request->is('post') || !$this->validate(['csrf_token' => 'required'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        // Rate limiting check (max 3 admin creations per hour per user)
+        $cache = \Config\Services::cache();
+        $rateLimitKey = 'admin_creation_' . $this->auth->id();
+        $attempts = $cache->get($rateLimitKey) ?? 0;
+        
+        if ($attempts >= 3) {
+            log_message('warning', 'Rate limit exceeded for admin creation by user ID: ' . $this->auth->id());
+            return $this->response->setJSON(['success' => false, 'message' => 'Too many admin creation attempts. Try again later.']);
+        }
+
+        // Enhanced validation rules
         $rules = [
             'email' => 'required|valid_email|is_unique[auth_identities.secret]',
-            'first_name' => 'required|min_length[2]|max_length[50]',
-            'last_name' => 'required|min_length[2]|max_length[50]',
-            'password' => 'required|min_length[8]',
+            'first_name' => 'required|min_length[2]|max_length[50]|alpha_space',
+            'last_name' => 'required|min_length[2]|max_length[50]|alpha_space',
+            'password' => 'required|min_length[12]|regex_match[/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/]',
             'confirm_password' => 'required|matches[password]'
         ];
 
         if (!$this->validate($rules)) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Validation failed: ' . implode(', ', $this->validator->getErrors())]);
+            $cache->save($rateLimitKey, $attempts + 1, 3600); // 1 hour
+            return $this->response->setJSON(['success' => false, 'message' => 'Validation failed. Password must be 12+ chars with uppercase, lowercase, number, and special character.']);
         }
 
         try {
             $db = \Config\Database::connect();
             $users = model(\CodeIgniter\Shield\Models\UserModel::class);
             
-            // Create user entity using the same approach as demo seeder
+            $email = $this->request->getPost('email');
+            $firstName = $this->request->getPost('first_name');
+            $lastName = $this->request->getPost('last_name');
+            
+            // Create user entity with inactive status for verification
             $user = new \CodeIgniter\Shield\Entities\User([
-                'email' => $this->request->getPost('email'),
+                'email' => $email,
                 'password' => $this->request->getPost('password'),
-                'active' => 1
+                'active' => 0 // Require activation
             ]);
 
             $users->save($user);
             $userId = $users->getInsertID();
             
             if ($userId) {
-                // Add to admin group using direct database insert like demo seeder
+                // Add to admin group
                 $db->table('auth_groups_users')->ignore(true)->insert([
                     'user_id' => $userId,
                     'group' => 'admin',
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
                 
+                // Log successful admin creation
+                log_message('info', 'Admin account created successfully. Email: ' . $email . ' by user ID: ' . $this->auth->id());
+                
+                // Clear rate limit on success
+                $cache->delete($rateLimitKey);
+                
                 return $this->response->setJSON([
                     'success' => true, 
-                    'message' => 'Admin account created successfully. Email: ' . $this->request->getPost('email')
+                    'message' => 'Admin account created. Account requires activation before use. Email: ' . $email
                 ]);
             }
         } catch (\Exception $e) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Failed to create admin account: ' . $e->getMessage()]);
+            // Log error without exposing sensitive details
+            log_message('error', 'Admin creation failed for email: ' . ($this->request->getPost('email') ?? 'unknown') . ' Error: ' . $e->getMessage());
+            $cache->save($rateLimitKey, $attempts + 1, 3600);
+            return $this->response->setJSON(['success' => false, 'message' => 'Failed to create admin account. Please try again.']);
         }
 
         return $this->response->setJSON(['success' => false, 'message' => 'Failed to create admin account']);
@@ -1136,6 +1197,81 @@ class Dashboard extends BaseController
             'status_counts' => $statusCounts,
             'recent_rejected' => $recentRejected,
             'total_students' => $studentModel->countAllResults()
+        ]);
+    }
+
+    /**
+     * Debug and fix student section assignments
+     */
+    public function fixStudentSections()
+    {
+        if (!$this->auth->user()->inGroup('admin')) {
+            return $this->response->setJSON(['error' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+        
+        // Find and remove the incorrectly named "Grade 10 - Aristotle" section
+        $wrongSection = $db->query("
+            SELECT id, section_name FROM sections 
+            WHERE section_name = 'Grade 10 - Aristotle'
+        ")->getRowArray();
+        
+        // Find the correct Aristotle section
+        $correctSection = $db->query("
+            SELECT id, section_name FROM sections 
+            WHERE section_name = 'Aristotle'
+        ")->getRowArray();
+        
+        $moved = 0;
+        $deleted = 0;
+        
+        if ($wrongSection && $correctSection) {
+            // Move students from wrong section to correct section
+            $result = $db->query("
+                UPDATE students 
+                SET section_id = ? 
+                WHERE section_id = ?
+            ", [$correctSection['id'], $wrongSection['id']]);
+            
+            if ($result) {
+                $moved = $db->affectedRows();
+            }
+            
+            // Delete the incorrectly named section
+            $deleteResult = $db->query("
+                DELETE FROM sections WHERE id = ?
+            ", [$wrongSection['id']]);
+            
+            if ($deleteResult) {
+                $deleted = 1;
+            }
+        }
+        
+        // Also fix Grade 10 students in Aphrodite section
+        $aphroditeSection = $db->query("
+            SELECT id FROM sections WHERE section_name = 'Aphrodite'
+        ")->getRowArray();
+        
+        $fixedAphrodite = 0;
+        if ($correctSection && $aphroditeSection) {
+            $result = $db->query("
+                UPDATE students 
+                SET section_id = ? 
+                WHERE (grade_level = 10 OR lrn LIKE 'DEMO-STUDENT-%') 
+                AND section_id = ?
+            ", [$correctSection['id'], $aphroditeSection['id']]);
+            
+            if ($result) {
+                $fixedAphrodite = $db->affectedRows();
+            }
+        }
+        
+        return $this->response->setJSON([
+            'moved_from_wrong_section' => $moved,
+            'deleted_sections' => $deleted,
+            'fixed_from_aphrodite' => $fixedAphrodite,
+            'message' => "Moved {$moved} students from wrong section, deleted {$deleted} incorrect section, fixed {$fixedAphrodite} from Aphrodite"
         ]);
     }
 }

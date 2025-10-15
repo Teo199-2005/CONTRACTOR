@@ -15,7 +15,6 @@
     <a href="<?= base_url('teacher/students') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-people me-2"></i>My Students</a>
     <a href="<?= base_url('teacher/schedule') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-calendar-week me-2"></i>My Schedule</a>
     <a href="<?= base_url('teacher/announcements') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-megaphone me-2"></i>Announcements</a>
-    <a href="<?= base_url('teacher/materials') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-folder2-open me-2"></i>Materials</a>
     <a href="<?= base_url('teacher/analytics') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-graph-up me-2"></i>Analytics</a>
   </div>
 </div>

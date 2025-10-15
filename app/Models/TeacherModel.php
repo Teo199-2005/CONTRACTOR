@@ -13,7 +13,7 @@ class TeacherModel extends Model
     protected $useSoftDeletes = true;
     protected $protectFields = true;
     protected $allowedFields = [
-        'teacher_id', 'user_id', 'first_name', 'middle_name', 'last_name', 'suffix',
+        'employee_id', 'user_id', 'first_name', 'middle_name', 'last_name', 'suffix',
         'gender', 'date_of_birth', 'contact_number', 'email', 'address',
         'department', 'position', 'specialization', 'date_hired',
         'employment_status', 'photo_path', 'license_number'
@@ -34,7 +34,7 @@ class TeacherModel extends Model
 
     // Validation
     protected $validationRules = [
-        'teacher_id' => 'permit_empty|is_unique[teachers.teacher_id,id,{id}]',
+        'employee_id' => 'permit_empty|is_unique[teachers.employee_id,id,{id}]',
         'first_name' => 'required|max_length[100]',
         'last_name' => 'required|max_length[100]',
         'gender' => 'required|in_list[Male,Female]',
@@ -49,7 +49,7 @@ class TeacherModel extends Model
 
     // Callbacks
     protected $allowCallbacks = true;
-    protected $beforeInsert = ['generateTeacherId'];
+    protected $beforeInsert = ['generateEmployeeId'];
     protected $afterInsert = [];
     protected $beforeUpdate = [];
     protected $afterUpdate = [];
@@ -59,29 +59,29 @@ class TeacherModel extends Model
     protected $afterDelete = [];
 
     /**
-     * Generate unique teacher ID before insert
+     * Generate unique employee ID before insert
      */
-    protected function generateTeacherId(array $data)
+    protected function generateEmployeeId(array $data)
     {
-        if (empty($data['data']['teacher_id'])) {
-            $data['data']['teacher_id'] = $this->createUniqueTeacherId();
+        if (empty($data['data']['employee_id'])) {
+            $data['data']['employee_id'] = $this->createUniqueEmployeeId();
         }
         return $data;
     }
 
     /**
-     * Create a unique teacher ID
+     * Create a unique employee ID
      */
-    public function createUniqueTeacherId(): string
+    public function createUniqueEmployeeId(): string
     {
         $year = date('Y');
-        $lastTeacher = $this->select('teacher_id')
-            ->where('teacher_id LIKE', 'T' . $year . '%')
-            ->orderBy('teacher_id', 'DESC')
+        $lastTeacher = $this->select('employee_id')
+            ->where('employee_id LIKE', 'T' . $year . '%')
+            ->orderBy('employee_id', 'DESC')
             ->first();
 
         if ($lastTeacher) {
-            $lastNumber = (int) substr($lastTeacher['teacher_id'], 5);
+            $lastNumber = (int) substr($lastTeacher['employee_id'], 5);
             $newNumber = $lastNumber + 1;
         } else {
             $newNumber = 1;

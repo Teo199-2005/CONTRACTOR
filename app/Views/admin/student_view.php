@@ -11,8 +11,8 @@
                         Student Application Details
                     </h5>
                     <div>
-                        <a href="<?= base_url('admin/students/pending') ?>" class="btn btn-outline-secondary btn-sm">
-                            <i class="bi bi-arrow-left"></i> Back to Pending Applications
+                        <a href="<?= base_url('admin/students') ?>" class="btn btn-outline-secondary btn-sm">
+                            <i class="bi bi-arrow-left"></i> Back to Students
                         </a>
                     </div>
                 </div>

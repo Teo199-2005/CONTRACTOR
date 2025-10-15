@@ -66,6 +66,13 @@
         <!-- Title -->
         <h2 class="text-primary mb-3"><?= esc($announcement['title']) ?></h2>
         
+        <?php if (strpos($announcement['title'], 'Analytics Report') !== false): ?>
+          <!-- Hide any error messages that might appear above the content -->
+          <style>
+            .alert-danger, .text-danger { display: none !important; }
+          </style>
+        <?php endif; ?>
+        
         <!-- Status Badge -->
         <div class="mb-3">
           <span class="badge bg-success fs-6">
@@ -80,12 +87,33 @@
         <!-- Content -->
         <div class="announcement-content">
           <div class="fs-5 lh-base">
-            <?= nl2br(esc($announcement['body'])) ?>
+            <?php if (strpos($announcement['title'], 'Analytics Report') !== false): ?>
+              <!-- Render HTML content for analytics reports -->
+              <?php 
+              $content = $announcement['body'];
+              // Remove various error messages and alerts
+              $content = str_replace('Teacher record not found', '', $content);
+              $content = preg_replace('/Teacher record not found/i', '', $content);
+              $content = preg_replace('/<div[^>]*alert[^>]*>.*?<\/div>/s', '', $content);
+              $content = preg_replace('/<p[^>]*text-danger[^>]*>.*?<\/p>/s', '', $content);
+              $content = preg_replace('/<span[^>]*text-danger[^>]*>.*?<\/span>/s', '', $content);
+              $content = trim($content);
+              echo $content;
+              ?>
+            <?php else: ?>
+              <!-- Escape content for regular announcements -->
+              <?= nl2br(esc($announcement['body'])) ?>
+            <?php endif; ?>
           </div>
         </div>
         
         <!-- Actions -->
         <div class="mt-4 d-flex gap-2">
+          <?php if (strpos($announcement['title'], 'Analytics Report') !== false): ?>
+            <a href="<?= base_url('admin/announcements/download-pdf/' . $announcement['id']) ?>" class="btn btn-success">
+              <i class="bi bi-file-earmark-pdf me-2"></i>Export PDF
+            </a>
+          <?php endif; ?>
           <a href="<?= base_url('admin/announcements/edit/' . $announcement['id']) ?>" class="btn btn-warning">
             <i class="bi bi-pencil me-2"></i>Edit Announcement
           </a>
@@ -173,6 +201,11 @@
       </div>
       <div class="card-body">
         <div class="d-grid gap-2">
+          <?php if (strpos($announcement['title'], 'Analytics Report') !== false): ?>
+            <a href="<?= base_url('admin/announcements/download-pdf/' . $announcement['id']) ?>" class="btn btn-success">
+              <i class="bi bi-file-earmark-pdf me-2"></i>Export PDF
+            </a>
+          <?php endif; ?>
           <a href="<?= base_url('admin/announcements/edit/' . $announcement['id']) ?>"
              class="btn btn-outline-warning">
             <i class="bi bi-pencil me-2"></i>Edit Content

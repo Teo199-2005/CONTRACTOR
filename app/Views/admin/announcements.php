@@ -52,15 +52,9 @@
       <p class="text-muted mb-0 small">Manage and publish announcements to your community</p>
     </div>
     <div class="d-flex gap-2">
-      <button class="btn btn-outline-info btn-sm" onclick="refreshStats()">
-        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-      </button>
-      <button class="btn btn-primary btn-sm" onclick="openCreateAnnouncementModal()">
+      <button class="btn btn-primary" style="padding: 12px 24px !important; font-size: 18px !important;" onclick="openCreateAnnouncementModal()">
         <i class="bi bi-plus-circle me-2"></i>New Announcement
       </button>
-      <a href="<?= base_url('admin/dashboard') ?>" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
-      </a>
     </div>
   </div>
 
@@ -110,16 +104,94 @@
 <!-- Blue Divider -->
 <div class="blue-divider mb-4"></div>
 
-<!-- Announcements List -->
+<?php 
+$analyticsReports = array_filter($announcements, function($announcement) {
+    return strpos($announcement['title'], 'Class Analytics Report') !== false;
+});
+$regularAnnouncements = array_filter($announcements, function($announcement) {
+    return strpos($announcement['title'], 'Class Analytics Report') === false;
+});
+?>
+
+<!-- Class Analytics Reports -->
+<?php if (!empty($analyticsReports)): ?>
+<div class="card bg-white border-0 shadow-sm rounded-3 mb-4">
+  <div class="card-header bg-transparent border-0 p-3">
+    <h4 class="card-title mb-0 small">
+      <i class="bi bi-bar-chart me-2 text-success"></i>
+      Class Analytics Reports (<?= count($analyticsReports) ?>)
+    </h4>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="border-0 fw-medium small">Title</th>
+            <th class="border-0 fw-medium small">Preview</th>
+            <th class="border-0 fw-medium small">Target</th>
+            <th class="border-0 fw-medium small">Status</th>
+            <th class="border-0 fw-medium small">Created</th>
+            <th class="border-0 fw-medium small text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($analyticsReports as $announcement): ?>
+            <tr>
+              <td class="py-2">
+                <div class="fw-medium text-dark small"><?= esc($announcement['title']) ?></div>
+              </td>
+              <td class="py-2">
+                <div class="announcement-preview text-muted small">
+                  <?= esc(substr(strip_tags($announcement['body']), 0, 100)) ?><?= strlen($announcement['body']) > 100 ? '...' : '' ?>
+                </div>
+              </td>
+              <td class="py-2">
+                <span class="badge bg-secondary target-badge"><?= esc($announcement['target_roles']) ?></span>
+              </td>
+              <td class="py-2">
+                <span class="badge bg-success status-badge">
+                  <i class="bi bi-check-circle me-1"></i>Published
+                </span>
+              </td>
+              <td class="py-2">
+                <small class="text-muted"><?= date('M j, Y', strtotime($announcement['created_at'])) ?></small>
+              </td>
+              <td class="py-2 text-center">
+                <div class="btn-group" role="group">
+                  <a href="<?= base_url('admin/announcements/show/' . $announcement['id']) ?>"
+                     class="btn btn-outline-info btn-sm" title="View">
+                    <i class="bi bi-eye"></i>
+                  </a>
+                  <a href="<?= base_url('admin/announcements/download-pdf/' . $announcement['id']) ?>"
+                     class="btn btn-outline-success btn-sm" title="Download PDF">
+                    <i class="bi bi-download"></i>
+                  </a>
+                  <button onclick="deleteAnnouncement(<?= $announcement['id'] ?>, '<?= esc($announcement['title']) ?>')"
+                          class="btn btn-outline-danger btn-sm" title="Delete">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<?php endif; ?>
+
+<!-- Regular Announcements -->
 <div class="card bg-white border-0 shadow-sm rounded-3">
   <div class="card-header bg-transparent border-0 p-3">
     <h4 class="card-title mb-0 small">
       <i class="bi bi-list-ul me-2 text-primary"></i>
-      All Announcements (<?= count($announcements) ?>)
+      Regular Announcements (<?= count($regularAnnouncements) ?>)
     </h4>
   </div>
   <div class="card-body p-0">
-    <?php if (!empty($announcements)): ?>
+    <?php if (!empty($regularAnnouncements)): ?>
       <div class="table-responsive">
         <table class="table table-hover mb-0">
           <thead class="table-light">
@@ -133,7 +205,7 @@
             </tr>
           </thead>
           <tbody>
-            <?php foreach ($announcements as $announcement): ?>
+            <?php foreach ($regularAnnouncements as $announcement): ?>
               <tr>
                 <td class="py-2">
                   <div class="fw-medium text-dark small"><?= esc($announcement['title']) ?></div>
@@ -177,7 +249,7 @@
     <?php else: ?>
       <div class="text-center py-5">
         <i class="bi bi-megaphone display-1 text-muted"></i>
-        <h5 class="text-muted mt-3">No announcements yet</h5>
+        <h5 class="text-muted mt-3">No regular announcements yet</h5>
         <p class="text-muted">Create your first announcement to get started.</p>
         <button class="btn btn-primary" onclick="openCreateAnnouncementModal()">
           <i class="bi bi-plus-circle me-2"></i>Create Announcement
@@ -216,7 +288,6 @@ function buildCreateAnnouncementModal() {
                 <option value="admin">Administrators</option>
                 <option value="teacher">Teachers</option>
                 <option value="student">Students</option>
-                <option value="parent">Parents</option>
               </select>
             </div>
             <div class="col-md-6 mb-3">
@@ -234,7 +305,7 @@ function buildCreateAnnouncementModal() {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn" style="background-color: #6c757d; color: white;" data-bs-dismiss="modal">Close</button>
           <button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i> Publish</button>
         </div>
       </form>
@@ -271,7 +342,7 @@ function buildEditAnnouncementModal(announcement) {
             <div class="col-md-6 mb-3">
               <label class="form-label">Target Audience</label>
               <select name="target_roles" class="form-select" required>
-                ${['all','admin','teacher','student','parent'].map(opt => `<option value="${opt}" ${announcement.target_roles===opt?'selected':''}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`).join('')}
+                ${['all','admin','teacher','student'].map(opt => `<option value="${opt}" ${announcement.target_roles===opt?'selected':''}>${opt.charAt(0).toUpperCase()+opt.slice(1)}</option>`).join('')}
               </select>
             </div>
             <div class="col-md-6 mb-3">
@@ -285,7 +356,7 @@ function buildEditAnnouncementModal(announcement) {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn" style="background-color: #6c757d; color: white;" data-bs-dismiss="modal">Close</button>
           <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i> Save Changes</button>
         </div>
       </form>

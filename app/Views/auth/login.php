@@ -345,12 +345,12 @@
         
         <div class="mb-3">
           <input type="text" class="form-control" id="identifier" name="identifier"
-                 placeholder="PRC License Number or LRN" value="<?= old('identifier') ?>" required>
+                 placeholder="PRC License Number or LRN" value="<?= old('identifier') ?: ($_COOKIE['remembered_identifier'] ?? '') ?>" required>
         </div>
 
         <div class="mb-3 position-relative">
           <input type="password" class="form-control" id="password" name="password"
-                 placeholder="Password" required>
+                 placeholder="Password" value="<?= $_COOKIE['remembered_password'] ?? '' ?>" required>
           <button type="button" class="btn position-absolute" id="togglePassword" 
                   style="right: 10px; top: 50%; transform: translateY(-50%); border: none; background: none; color: #6b7280; z-index: 10;">
             <i class="bi bi-eye" id="toggleIcon"></i>
@@ -359,8 +359,8 @@
 
         <div class="remember-section">
           <div class="form-check">
-            <input type="checkbox" class="form-check-input" id="remember" name="remember" value="1">
-            <label class="form-check-label" for="remember">Keep me signed in</label>
+            <input type="checkbox" class="form-check-input" id="remember" name="remember" value="1" <?= isset($_COOKIE['remembered_identifier']) && $_COOKIE['remembered_identifier'] ? 'checked' : '' ?>>
+            <label class="form-check-label" for="remember">Remember me</label>
           </div>
           <div class="forgot-password-section">
             <a href="<?= base_url('forgot-password') ?>" class="forgot-link">Forgot Password?</a>

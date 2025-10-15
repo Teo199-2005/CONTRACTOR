@@ -139,7 +139,6 @@ document.addEventListener('DOMContentLoaded', function() {
       <a href="<?= base_url('admin/students/pending') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-clock-history me-2"></i>Pending Applications</a>
       <a href="<?= base_url('admin/id-cards') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-credit-card-2-front me-2"></i>ID Cards</a>
       <a href="<?= base_url('admin/analytics') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-graph-up me-2"></i>Analytics</a>
-      <a href="<?= base_url('admin/notifications') ?>" class="btn btn-sm btn-outline-primary"><i class="bi bi-bell me-2"></i>Notifications</a>
     </div>
     
     <div class="btn-group">
@@ -248,7 +247,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                     <div class="text-muted small">Grade <?= esc($enrollment['grade_level'] ?? '-') ?></div>
                   </div>
-                  <span class="badge bg-warning-subtle text-warning-emphasis ms-2 small">Pending</span>
+                  <?php 
+                  $statusClass = match($enrollment['enrollment_status']) {
+                    'enrolled' => 'bg-success-subtle text-success-emphasis',
+                    'pending' => 'bg-warning-subtle text-warning-emphasis', 
+                    'rejected' => 'bg-danger-subtle text-danger-emphasis',
+                    'approved' => 'bg-info-subtle text-info-emphasis',
+                    default => 'bg-secondary-subtle text-secondary-emphasis'
+                  };
+                  ?>
+                  <span class="badge <?= $statusClass ?> ms-2 small"><?= ucfirst($enrollment['enrollment_status']) ?></span>
                 </div>
               </div>
             <?php endforeach; ?>

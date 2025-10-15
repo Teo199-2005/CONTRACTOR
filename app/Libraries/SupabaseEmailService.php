@@ -26,6 +26,17 @@ class SupabaseEmailService
         return $result;
     }
     
+    public function sendRejectionEmail($toEmail, $studentName)
+    {
+        $subject = 'LPHS - Enrollment Application Status Update';
+        
+        $message = $this->getRejectionEmailTemplate($studentName);
+        
+        $result = $this->sendEmail($toEmail, $subject, $message);
+        log_message('info', 'Rejection email processing completed for: ' . $toEmail);
+        return $result;
+    }
+    
     private function sendEmail($to, $subject, $htmlContent)
     {
         // Try Supabase Auth email first
@@ -175,6 +186,59 @@ class SupabaseEmailService
                     </ul>
                     
                     <p>Welcome to Lourdes Provincial High School! We look forward to your academic journey with us.</p>
+                </div>
+                
+                <div class='footer'>
+                    <p>Lourdes Provincial High School<br>
+                    Barangay Lourdes, Panglao Town, Bohol, Philippines<br>
+                    📞 +63 38 502 9000 | 📧 info@lphs.edu.ph</p>
+                </div>
+            </div>
+        </body>
+        </html>";
+    }
+    
+    private function getRejectionEmailTemplate($studentName)
+    {
+        return "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset='utf-8'>
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+                .content { padding: 20px; background: #f8f9fa; }
+                .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                .notice { background: #fef2f2; padding: 15px; border-left: 4px solid #dc2626; margin: 15px 0; }
+            </style>
+        </head>
+        <body>
+            <div class='container'>
+                <div class='header'>
+                    <h1>📋 LPHS Enrollment Update</h1>
+                    <p>Lourdes Provincial High School</p>
+                </div>
+                
+                <div class='content'>
+                    <h2>Dear {$studentName},</h2>
+                    
+                    <p>Thank you for your interest in enrolling at Lourdes Provincial High School.</p>
+                    
+                    <div class='notice'>
+                        <h3>⚠️ Application Status Update</h3>
+                        <p>After careful review, we regret to inform you that your enrollment application has not been approved at this time.</p>
+                    </div>
+                    
+                    <h3>📞 Next Steps:</h3>
+                    <ul>
+                        <li>You may contact our admissions office for more information</li>
+                        <li>Consider reapplying in the next enrollment period</li>
+                        <li>Explore other educational opportunities that may be available</li>
+                    </ul>
+                    
+                    <p>We appreciate your understanding and wish you the best in your educational journey.</p>
                 </div>
                 
                 <div class='footer'>

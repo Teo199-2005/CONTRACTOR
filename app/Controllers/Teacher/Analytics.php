@@ -28,15 +28,15 @@ class Analytics extends BaseController
             return redirect()->to(base_url('login'));
         }
 
-        $teacherId = $this->auth->id();
+        $userId = $this->auth->id();
         $teacherModel = new TeacherModel();
         $studentModel = new StudentModel();
         $gradeModel = new GradeModel();
         $subjectModel = new SubjectModel();
         $sectionModel = new SectionModel();
 
-        // Force Demo Teacher for all users
-        $teacher = $teacherModel->find(11); // Demo Teacher ID
+        // Get the actual logged-in teacher
+        $teacher = $teacherModel->where('user_id', $userId)->first();
 
         if (!$teacher) {
             return view('teacher/analytics', [
@@ -45,12 +45,15 @@ class Analytics extends BaseController
             ]);
         }
 
-        // Use fixed school year and quarter where we have data
-        $schoolYear = '2024-2025';
+        // Use current school year and quarter
+        $schoolYear = '2025-2026';
         $currentQuarter = 1;
 
+        // Get the section info for display
+        $teacherSection = $sectionModel->where('adviser_id', $teacher['id'])->first();
+
         // Get students from sections where this teacher is adviser
-        $myStudents = $studentModel->select('students.*, sections.section_name')
+        $myStudents = $studentModel->select('students.*, sections.section_name, sections.grade_level as section_grade')
             ->join('sections', 'sections.id = students.section_id', 'left')
             ->where('sections.adviser_id', $teacher['id'])
             ->where('students.enrollment_status', 'enrolled')
@@ -65,8 +68,13 @@ class Analytics extends BaseController
                 ->findAll();
         }
 
-        // Calculate analytics data
-        $analytics = $this->calculateAnalytics($myStudents, $mySubjects, $schoolYear, $currentQuarter);
+        // Calculate actual analytics from grades
+        $analytics = $this->calculateAnalytics($myStudents, $mySubjects, $schoolYear, $currentQuarter, $teacher['id']);
+        
+        // If no real grades found, use empty analytics
+        if ($analytics['classAverage'] == 0 && empty($analytics['subjectAverages'])) {
+            $analytics = $this->getEmptyAnalytics(count($myStudents));
+        }
         
         // Add attendance analytics
         $attendanceModel = new AttendanceModel();
@@ -82,11 +90,12 @@ class Analytics extends BaseController
             'mySubjects' => $mySubjects,
             'analytics' => $analytics,
             'schoolYear' => $schoolYear,
-            'currentQuarter' => $currentQuarter
+            'currentQuarter' => $currentQuarter,
+            'teacherSection' => $teacherSection
         ]);
     }
 
-    private function calculateAnalytics($students, $subjects, $schoolYear, $currentQuarter)
+    private function calculateAnalytics($students, $subjects, $schoolYear, $currentQuarter, $teacherId = null)
     {
         $gradeModel = new GradeModel();
 
@@ -104,14 +113,17 @@ class Analytics extends BaseController
             'subjectAverages' => [],
             'quarterTrends' => [],
             'studentPerformance' => [],
-            'attendanceRate' => 95.5, // Mock data
-            'improvementRate' => 12.3, // Mock data
+            'attendanceRate' => 0, // Will be calculated from actual data
+            'improvementRate' => 0, // Will be calculated from actual data
             'classAverage' => 0
         ];
 
         if (empty($students)) {
+            log_message('info', 'No students found for teacher ID: ' . ($teacherId ?? 'unknown'));
             return $analytics;
         }
+        
+        log_message('info', 'Calculating analytics for ' . count($students) . ' students, school year: ' . $schoolYear . ', quarter: ' . $currentQuarter . ', teacher ID: ' . ($teacherId ?? 'unknown'));
 
         $totalGrades = 0;
         $gradeCount = 0;
@@ -121,11 +133,19 @@ class Analytics extends BaseController
             $subjectGrades = [];
 
             foreach ($students as $student) {
+                // Get grades for this specific student and subject
                 $grade = $gradeModel->where('student_id', $student['id'])
                     ->where('subject_id', $subject['id'])
                     ->where('school_year', $schoolYear)
                     ->where('quarter', $currentQuarter)
                     ->first();
+                    
+                // Debug: Log grade query
+                if (!$grade) {
+                    log_message('debug', 'No grade found for student ' . $student['id'] . ', subject ' . $subject['id'] . ', SY: ' . $schoolYear . ', Q: ' . $currentQuarter);
+                } else {
+                    log_message('debug', 'Found grade: ' . $grade['grade'] . ' for student ' . $student['id'] . ', subject ' . $subject['id']);
+                }
 
                 if ($grade && $grade['grade'] !== null) {
                     $gradeValue = (float)$grade['grade'];
@@ -163,14 +183,31 @@ class Analytics extends BaseController
         if ($gradeCount > 0) {
             $analytics['classAverage'] = round($totalGrades / $gradeCount, 2);
         }
+        
+        // Calculate actual attendance rate if we have attendance data
+        if (isset($analytics['attendanceStats']) && $analytics['attendanceStats']['total'] > 0) {
+            $analytics['attendanceRate'] = $analytics['attendanceStats']['attendanceRate'];
+        }
+        
+        // Calculate improvement rate based on quarter comparison
+        if (count($analytics['quarterTrends']) >= 2) {
+            $currentAvg = $analytics['classAverage'];
+            $previousAvg = $analytics['quarterTrends'][0]['average'] ?? 0;
+            if ($previousAvg > 0) {
+                $analytics['improvementRate'] = round((($currentAvg - $previousAvg) / $previousAvg) * 100, 1);
+            }
+        }
 
-        // Calculate quarter trends (mock data for now)
-        $analytics['quarterTrends'] = [
-            ['quarter' => 'Q1', 'average' => 82.5],
-            ['quarter' => 'Q2', 'average' => 84.2],
-            ['quarter' => 'Q3', 'average' => $analytics['classAverage']],
-            ['quarter' => 'Q4', 'average' => 0] // Future quarter
-        ];
+        // Calculate quarter trends based on actual data only
+        $analytics['quarterTrends'] = [];
+        for ($q = 1; $q <= 4; $q++) {
+            if ($q == $currentQuarter) {
+                $analytics['quarterTrends'][] = ['quarter' => 'Q' . $q, 'average' => $analytics['classAverage']];
+            } else {
+                // Only show 0 for other quarters since we don't have historical data
+                $analytics['quarterTrends'][] = ['quarter' => 'Q' . $q, 'average' => 0];
+            }
+        }
 
         // Calculate individual student performance
         foreach ($students as $student) {
@@ -239,23 +276,47 @@ class Analytics extends BaseController
         // Increase execution time for PDF generation
         set_time_limit(120);
         ini_set('memory_limit', '256M');
-
-        $teacherId = $this->auth->id();
+        
         $teacherModel = new TeacherModel();
         $studentModel = new StudentModel();
         $gradeModel = new GradeModel();
         $subjectModel = new SubjectModel();
         $sectionModel = new SectionModel();
 
-        // Force Demo Teacher for all users
-        $teacher = $teacherModel->find(11); // Demo Teacher ID
+        // Get the teacher - either logged in teacher or specific teacher for admin
+        $userId = $this->auth->id();
+        $teacher = null;
+        
+        // Check if user is admin accessing from announcement
+        if ($this->auth->user()->inGroup('admin')) {
+            // For admin, get teacher from announcement context or URL parameter
+            $teacherName = $this->request->getGet('teacher');
+            if ($teacherName) {
+                // Parse teacher name from parameter
+                $nameParts = explode(' ', $teacherName, 2);
+                $firstName = $nameParts[0] ?? '';
+                $lastName = $nameParts[1] ?? '';
+                
+                $teacher = $teacherModel->where('first_name', $firstName)
+                                       ->where('last_name', $lastName)
+                                       ->first();
+            }
+            
+            // Fallback to first active teacher if not found
+            if (!$teacher) {
+                $teacher = $teacherModel->where('employment_status', 'active')->first();
+            }
+        } else {
+            // For regular teacher, get their own record
+            $teacher = $teacherModel->where('user_id', $userId)->first();
+        }
 
         if (!$teacher) {
             return redirect()->back()->with('error', 'Teacher record not found');
         }
 
         // Use fixed school year and quarter where we have data
-        $schoolYear = '2024-2025';
+        $schoolYear = '2025-2026';
         $currentQuarter = 1;
 
         // Get students from sections where this teacher is adviser
@@ -274,8 +335,13 @@ class Analytics extends BaseController
                 ->findAll();
         }
 
-        // Calculate analytics data
-        $analytics = $this->calculateAnalytics($myStudents, $mySubjects, $schoolYear, $currentQuarter);
+        // Calculate analytics data - only real data, no demo
+        $analytics = $this->calculateAnalytics($myStudents, $mySubjects, $schoolYear, $currentQuarter, $teacher['id']);
+        
+        // If no grades found, use empty analytics
+        if ($analytics['classAverage'] == 0 && empty($analytics['subjectAverages'])) {
+            $analytics = $this->getEmptyAnalytics(count($myStudents));
+        }
 
         $data = [
             'teacher' => $teacher,
@@ -302,6 +368,120 @@ class Analytics extends BaseController
         
         $filename = 'LPHS_Teacher_Analytics_Report_' . date('Y-m-d') . '.pdf';
         $dompdf->stream($filename, ['Attachment' => false]);
+    }
+
+    public function sendToAdmin()
+    {
+        if (!$this->auth->loggedIn()) {
+            return $this->response->setJSON(['success' => false, 'error' => 'Unauthorized']);
+        }
+
+        $teacherModel = new TeacherModel();
+        $userId = $this->auth->id();
+        $teacher = $teacherModel->where('user_id', $userId)->first();
+
+        if (!$teacher) {
+            return $this->response->setJSON(['success' => false, 'error' => 'Teacher not found']);
+        }
+
+        $input = $this->request->getJSON(true);
+        $analytics = $input['analytics'] ?? [];
+        $schoolYear = $input['schoolYear'] ?? '2024-2025';
+        $currentQuarter = $input['currentQuarter'] ?? 1;
+
+        // Create announcement with analytics data
+        $announcementModel = model('AnnouncementModel');
+        
+        $title = 'Class Analytics Report - ' . $teacher['first_name'] . ' ' . $teacher['last_name'];
+        $body = $this->formatAnalyticsForAnnouncement($analytics, $teacher, $schoolYear, $currentQuarter);
+        
+        $announcementData = [
+            'title' => $title,
+            'slug' => 'analytics-report-' . date('Y-m-d-H-i-s'),
+            'body' => $body,
+            'target_roles' => 'admin',
+            'published_at' => date('Y-m-d H:i:s'),
+            'created_by' => $this->auth->id()
+        ];
+
+        if ($announcementModel->save($announcementData)) {
+            return $this->response->setJSON(['success' => true, 'message' => 'Analytics report sent to admin']);
+        } else {
+            return $this->response->setJSON(['success' => false, 'error' => 'Failed to create announcement']);
+        }
+    }
+
+    private function formatAnalyticsForAnnouncement($analytics, $teacher, $schoolYear, $currentQuarter)
+    {
+        $body = "<h4>Class Analytics Report</h4>";
+        $body .= "<p><strong>Teacher:</strong> {$teacher['first_name']} {$teacher['last_name']}</p>";
+        $body .= "<p><strong>School Year:</strong> {$schoolYear}</p>";
+        $body .= "<p><strong>Quarter:</strong> {$currentQuarter}</p>";
+        $body .= "<p><strong>Report Date:</strong> " . date('F j, Y g:i A') . "</p>";
+        
+        $body .= "<h5>Summary Statistics</h5>";
+        $body .= "<ul>";
+        $body .= "<li>Total Students: " . ($analytics['totalStudents'] ?? 0) . "</li>";
+        $body .= "<li>Class Average: " . number_format($analytics['classAverage'] ?? 0, 1) . "%</li>";
+        $body .= "<li>Attendance Rate: " . number_format($analytics['attendanceRate'] ?? 0, 1) . "%</li>";
+        $body .= "<li>Improvement Rate: +" . number_format($analytics['improvementRate'] ?? 0, 1) . "%</li>";
+        $body .= "</ul>";
+        
+        if (!empty($analytics['attendanceStats'])) {
+            $body .= "<h5>Attendance Details</h5>";
+            $body .= "<ul>";
+            $body .= "<li>Present: " . ($analytics['attendanceStats']['present'] ?? 0) . "</li>";
+            $body .= "<li>Absent: " . ($analytics['attendanceStats']['absent'] ?? 0) . "</li>";
+            $body .= "<li>Late: " . ($analytics['attendanceStats']['late'] ?? 0) . "</li>";
+            $body .= "<li>Excused: " . ($analytics['attendanceStats']['excused'] ?? 0) . "</li>";
+            $body .= "</ul>";
+        }
+        
+        if (!empty($analytics['subjectAverages'])) {
+            $body .= "<h5>Subject Averages</h5>";
+            $body .= "<ul>";
+            foreach ($analytics['subjectAverages'] as $subject) {
+                $body .= "<li>{$subject['subject']}: " . number_format($subject['average'], 1) . "%</li>";
+            }
+            $body .= "</ul>";
+        }
+        
+        return $body;
+    }
+    
+    private function getEmptyAnalytics($studentCount = 0)
+    {
+        return [
+            'totalStudents' => $studentCount,
+            'totalSubjects' => 0,
+            'gradeDistribution' => [
+                'excellent' => 0,
+                'very_good' => 0,
+                'good' => 0,
+                'fair' => 0,
+                'passing' => 0,
+                'failing' => 0
+            ],
+            'subjectAverages' => [],
+            'quarterTrends' => [
+                ['quarter' => 'Q1', 'average' => 0],
+                ['quarter' => 'Q2', 'average' => 0],
+                ['quarter' => 'Q3', 'average' => 0],
+                ['quarter' => 'Q4', 'average' => 0]
+            ],
+            'studentPerformance' => [],
+            'attendanceRate' => 0,
+            'improvementRate' => 0,
+            'classAverage' => 0,
+            'attendanceStats' => [
+                'present' => 0,
+                'absent' => 0,
+                'late' => 0,
+                'excused' => 0,
+                'total' => 0,
+                'attendanceRate' => 0
+            ]
+        ];
     }
 }
 

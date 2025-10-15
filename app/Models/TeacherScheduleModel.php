@@ -21,7 +21,7 @@ class TeacherScheduleModel extends Model
     protected $createdField = 'created_at';
     protected $updatedField = 'updated_at';
 
-    public function getTeacherSchedule($teacherId, $schoolYear = '2024-2025')
+    public function getTeacherSchedule($teacherId, $schoolYear = '2025-2026')
     {
         return $this->select('teacher_schedules.*, subjects.subject_name, subjects.subject_code, sections.section_name, sections.grade_level')
             ->join('subjects', 'subjects.id = teacher_schedules.subject_id')

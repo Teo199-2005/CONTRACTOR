@@ -15,9 +15,9 @@ class StudentModel extends Model
     protected $allowedFields = [
         'student_id', 'user_id', 'lrn', 'student_type', 'first_name', 'middle_name', 'last_name', 'suffix',
         'gender', 'date_of_birth', 'place_of_birth', 'nationality', 'religion',
-        'contact_number', 'email', 'address', 'emergency_contact_name',
+        'contact_number', 'phone', 'email', 'address', 'emergency_contact_name',
         'emergency_contact_number', 'emergency_contact_relationship', 'photo_path',
-        'enrollment_status', 'grade_level', 'section_id', 'school_year'
+        'enrollment_status', 'grade_level', 'section_id', 'school_year', 'temp_password'
     ];
 
     protected bool $allowEmptyInserts = false;

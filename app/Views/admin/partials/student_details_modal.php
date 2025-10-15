@@ -80,7 +80,6 @@
           'birth_certificate' => ['label' => 'Birth Certificate', 'icon' => 'bi-file-earmark-person'],
           'report_card' => ['label' => 'Report Card (Form 138)', 'icon' => 'bi-file-earmark-bar-graph'],
           'good_moral' => ['label' => 'Good Moral Certificate', 'icon' => 'bi-file-earmark-check'],
-          'medical_certificate' => ['label' => 'Medical Certificate', 'icon' => 'bi-file-earmark-medical'],
           'photo' => ['label' => '2x2 Photo', 'icon' => 'bi-person-square']
         ];
         ?>
@@ -97,11 +96,27 @@
                 $doc = $documents[$type];
                 $fileName = basename($doc['file_path']);
 
-                // Check both possible file locations
-                $filePath1 = WRITEPATH . 'uploads/enrollment_documents/' . $fileName;
-                $filePath2 = WRITEPATH . $doc['file_path'];
-
-                $fileExists = file_exists($filePath1) || file_exists($filePath2);
+                // Check the correct file location - use multiple methods to ensure compatibility
+                $filePath = null;
+                $fileExists = false;
+                
+                // Try different path methods
+                if (defined('FCPATH')) {
+                    $filePath = FCPATH . 'uploads/enrollment_documents/' . $fileName;
+                    $fileExists = file_exists($filePath);
+                }
+                
+                // Fallback method if FCPATH doesn't work
+                if (!$fileExists) {
+                    $filePath = ROOTPATH . 'public/uploads/enrollment_documents/' . $fileName;
+                    $fileExists = file_exists($filePath);
+                }
+                
+                // Another fallback using relative path from app root
+                if (!$fileExists) {
+                    $filePath = dirname(dirname(dirname(__DIR__))) . '/public/uploads/enrollment_documents/' . $fileName;
+                    $fileExists = file_exists($filePath);
+                }
                 $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
                 // Use the filename for the URL
@@ -110,7 +125,7 @@
 
                 <?php if ($fileExists): ?>
                   <?php if (in_array($fileExtension, ['jpg', 'jpeg', 'png', 'gif'])): ?>
-                    <div class="image-preview" onclick="showImageModal('<?= $fileUrl ?>', '<?= esc($info['label']) ?>')" style="cursor: pointer;">
+                    <a href="<?= base_url('admin/students/document/' . $fileName) ?>" class="image-preview" style="cursor: pointer; text-decoration: none;">
                       <img src="<?= $fileUrl ?>"
                            alt="<?= $info['label'] ?>"
                            class="document-thumbnail"
@@ -119,7 +134,7 @@
                         <i class="bi bi-eye"></i>
                         <span>Click to view</span>
                       </div>
-                    </div>
+                    </a>
                   <?php else: ?>
                     <div class="file-preview">
                       <i class="bi bi-file-earmark-pdf"></i>
@@ -288,10 +303,16 @@
   color: white;
   opacity: 0;
   transition: opacity 0.3s ease;
+  text-decoration: none;
 }
 
 .image-preview:hover .document-overlay {
   opacity: 1;
+}
+
+.document-overlay span {
+  color: white;
+  text-decoration: none;
 }
 
 .document-overlay i {
@@ -340,16 +361,13 @@
 
 /* Document Viewer Modal */
 .document-viewer-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.9);
-  z-index: 10000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(0, 0, 0, 0.9) !important;
+  z-index: 99999 !important;
 }
 
 .document-viewer-overlay {
@@ -361,12 +379,15 @@
 }
 
 .document-viewer-content {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
   background: white;
   border-radius: 12px;
   max-width: 90vw;
   max-height: 90vh;
   overflow: hidden;
-  position: relative;
 }
 
 .document-viewer-header {
@@ -399,11 +420,15 @@
 .document-viewer-body {
   padding: 1rem;
   text-align: center;
+  height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .document-viewer-image {
   max-width: 100%;
-  max-height: 70vh;
+  max-height: 100%;
   object-fit: contain;
 }
 </style>

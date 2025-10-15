@@ -19,8 +19,19 @@ class Announcements extends BaseController
         if (! $this->auth->user()->inGroup('teacher')) {
             return redirect()->to(base_url('/'));
         }
+        
+        $model = new AnnouncementModel();
+        
+        // Get announcements for teachers (from admin) and all announcements
+        $announcements = $model->where('target_roles', 'teacher')
+                              ->orWhere('target_roles', 'all')
+                              ->orWhere('target_roles', 'admin')
+                              ->orderBy('created_at', 'DESC')
+                              ->findAll();
+        
         return view('teacher/announcements', [
-            'title' => 'Post Announcements - LPHS SMS',
+            'title' => 'Announcements - LPHS SMS',
+            'announcements' => $announcements
         ]);
     }
 

@@ -24,6 +24,7 @@
           ['href' => base_url('student/grades'), 'icon' => 'bi-bar-chart-line', 'label' => 'My Grades'],
           ['href' => base_url('student/materials'), 'icon' => 'bi-folder', 'label' => 'Materials'],
           ['href' => base_url('student/announcements'), 'icon' => 'bi-megaphone', 'label' => 'Announcements'],
+          ['href' => base_url('student/profile'), 'icon' => 'bi-person-circle', 'label' => 'Profile'],
 
         ];
         try {
@@ -44,8 +45,7 @@
                 ['href' => base_url('admin/sections'), 'icon' => 'bi-grid-3x3-gap', 'label' => 'Sections & Subjects'],
                 ['href' => base_url('admin/analytics'), 'icon' => 'bi-graph-up', 'label' => 'Analytics'],
                 ['href' => base_url('admin/announcements'), 'icon' => 'bi-megaphone', 'label' => 'Announcements'],
-                ['href' => base_url('admin/notifications'), 'icon' => 'bi-bell', 'label' => 'Notifications'],
-
+                ['href' => base_url('admin/password-resets'), 'icon' => 'bi-key', 'label' => 'Password Resets'],
               ];
             } elseif ($user->inGroup('teacher')) {
               $role = 'teacher';
@@ -56,11 +56,13 @@
               $navMain = [
                 ['href' => base_url('teacher/dashboard'), 'icon' => 'bi-speedometer2', 'label' => 'Dashboard'],
                 ['href' => base_url('teacher/students'), 'icon' => 'bi-people-fill', 'label' => 'My Students'],
+                ['href' => base_url('teacher/sections'), 'icon' => 'bi-grid-3x3-gap', 'label' => 'My Sections'],
                 ['href' => base_url('teacher/grades'), 'icon' => 'bi-bar-chart-line', 'label' => 'Enter Grades'],
                 ['href' => base_url('teacher/attendance'), 'icon' => 'bi-calendar-check', 'label' => 'Attendance'],
                 ['href' => base_url('teacher/schedule'), 'icon' => 'bi-calendar-event', 'label' => 'My Schedule'],
                 ['href' => base_url('teacher/analytics'), 'icon' => 'bi-graph-up', 'label' => 'Analytics'],
                 ['href' => base_url('teacher/announcements'), 'icon' => 'bi-megaphone', 'label' => 'Announcements'],
+                ['href' => base_url('teacher/profile'), 'icon' => 'bi-person-circle', 'label' => 'Profile'],
               ];
             } elseif ($user->inGroup('parent')) {
               $role = 'parent';
@@ -87,7 +89,6 @@
       <!-- Sidebar Header -->
       <div class="app-sidebar-header">
         <a href="<?= $dashboardUrl ?>" class="d-flex align-items-center text-decoration-none">
-
           <div class="app-brand-text">
             <div class="app-brand-title">LPHS SMS</div>
             <div class="app-brand-subtitle"><?= esc($portalLabel) ?></div>
@@ -97,6 +98,61 @@
           <i class="bi bi-list"></i>
         </button>
       </div>
+      
+      <!-- User Greeting -->
+      <?php if (auth()->loggedIn()): ?>
+        <div class="user-greeting">
+          <div class="greeting-text">
+            <?php 
+              $currentHour = (int)date('H');
+              if ($currentHour >= 5 && $currentHour < 12) {
+                $greeting = 'Good Morning';
+              } elseif ($currentHour >= 12 && $currentHour < 17) {
+                $greeting = 'Good Afternoon';
+              } elseif ($currentHour >= 17 && $currentHour < 21) {
+                $greeting = 'Good Evening';
+              } else {
+                $greeting = 'Good Night';
+              }
+              
+              $user = auth()->user();
+              $userName = 'User';
+              
+              if ($user->inGroup('admin')) {
+                $userName = 'Admin';
+              } elseif ($user->inGroup('teacher')) {
+                // Try to get teacher name from teachers table
+                $db = \Config\Database::connect();
+                $teacher = $db->table('teachers')
+                  ->select('first_name, last_name')
+                  ->where('user_id', $user->id)
+                  ->get()
+                  ->getRow();
+                if ($teacher) {
+                  $userName = $teacher->first_name . ' ' . $teacher->last_name;
+                } else {
+                  $userName = 'Teacher';
+                }
+              } elseif ($user->inGroup('student')) {
+                // Try to get student name from students table
+                $db = \Config\Database::connect();
+                $student = $db->table('students')
+                  ->select('first_name, last_name')
+                  ->where('user_id', $user->id)
+                  ->get()
+                  ->getRow();
+                if ($student) {
+                  $userName = $student->first_name . ' ' . $student->last_name;
+                } else {
+                  $userName = 'Student';
+                }
+              }
+            ?>
+            <div class="greeting-main"><?= $greeting ?>!</div>
+            <div class="greeting-name"><?= esc($userName) ?></div>
+          </div>
+        </div>
+      <?php endif; ?>
 
       <!-- Sidebar Navigation -->
       <nav>
@@ -155,12 +211,6 @@
           </h4>
         </div>
         <div class="top-bar-actions">
-          <a href="<?= $notificationsHref ?>" class="btn btn-outline-secondary btn-sm me-2">
-            <i class="bi bi-bell"></i>
-          </a>
-          <a href="<?= $accountPanelHref ?>" class="btn btn-outline-primary btn-sm">
-            <i class="bi bi-person"></i>
-          </a>
         </div>
       </div>
     </div>
@@ -211,7 +261,7 @@
         <h4>Contact Info</h4>
         <div class="contact-item">
           <i class="bi bi-geo-alt"></i>
-          <span>123 Education St, City</span>
+          <span>Lourdes, Nabua, Camarines Sur</span>
         </div>
         <div class="contact-item">
           <i class="bi bi-telephone"></i>
@@ -230,7 +280,7 @@
 
     <div class="footer-bottom">
       <div class="footer-bottom-left">
-        <p>&copy; 2024 LPHS SMS. All rights reserved.</p>
+        <p>&copy; 2025 LPHS SMS. All rights reserved.</p>
         <span class="version">Version 1.0.0</span>
       </div>
       <div class="footer-bottom-right">
@@ -361,6 +411,50 @@
     .lphs-answer { background:#ffffff; border:1px solid rgba(0,0,0,.06); border-radius:10px; padding:8px 10px; }
     .lphs-answer-title { font-weight:600; color:#0b5ed7; display:flex; align-items:center; gap:6px; margin-bottom:4px; font-size:12px; }
     .lphs-answer-body { font-size:13px; color:#212529; }
+    
+    /* User Greeting Styles */
+    .user-greeting {
+      padding: 5px 20px;
+      background: linear-gradient(135deg, rgba(55, 65, 81, 0.3) 0%, rgba(75, 85, 99, 0.3) 50%, rgba(107, 114, 128, 0.3) 100%);
+      border-bottom: 2px solid rgba(55, 65, 81, 0.3);
+      margin-bottom: 15px;
+      box-shadow: 0 4px 12px rgba(55, 65, 81, 0.05);
+    }
+    
+    .greeting-text {
+      text-align: center;
+    }
+    
+    .greeting-main {
+      font-size: 15px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 4px;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .greeting-name {
+      font-size: 17px;
+      color: #ffffff;
+      font-weight: 700;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      letter-spacing: 0.3px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 991.98px) {
+      .user-greeting {
+        padding: 4px 18px;
+      }
+      
+      .greeting-main {
+        font-size: 14px;
+      }
+      
+      .greeting-name {
+        font-size: 16px;
+      }
+    }
   </style>
 
   <button id="lphsChatBtn" class="lphs-chat-button" aria-label="Open LPHS AI Chatbot">

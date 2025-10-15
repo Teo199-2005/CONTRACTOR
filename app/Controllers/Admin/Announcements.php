@@ -4,6 +4,8 @@ namespace App\Controllers\Admin;
 
 use App\Controllers\BaseController;
 use App\Models\AnnouncementModel;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 
 class Announcements extends BaseController
 {
@@ -69,7 +71,7 @@ class Announcements extends BaseController
         $rules = [
             'title' => 'required|max_length[255]',
             'body' => 'required',
-            'target_roles' => 'required|in_list[all,admin,teacher,student,parent]',
+            'target_roles' => 'required|in_list[all,admin,teacher,student]',
         ];
 
         if (!$this->validate($rules)) {
@@ -157,7 +159,7 @@ class Announcements extends BaseController
         $rules = [
             'title' => 'required|max_length[255]',
             'body' => 'required',
-            'target_roles' => 'required|in_list[all,admin,teacher,student,parent]',
+            'target_roles' => 'required|in_list[all,admin,teacher,student]',
         ];
 
         if (!$this->validate($rules)) {
@@ -203,6 +205,41 @@ class Announcements extends BaseController
     }
 
 
+
+    /**
+     * Export PDF for analytics reports
+     */
+    public function downloadPdf($id)
+    {
+        if (!$this->auth->user()->inGroup('admin')) {
+            return redirect()->to(base_url('/'));
+        }
+
+        $announcementModel = new AnnouncementModel();
+        $announcement = $announcementModel->find($id);
+
+        if (!$announcement) {
+            return redirect()->to(base_url('admin/announcements'))->with('error', 'Announcement not found.');
+        }
+
+        // Check if this is an analytics report
+        if (strpos($announcement['title'], 'Analytics Report') === false) {
+            return redirect()->back()->with('error', 'PDF export is only available for analytics reports.');
+        }
+
+        // Extract teacher name from announcement title
+        $teacherName = '';
+        if (preg_match('/Class Analytics Report - (.+)/', $announcement['title'], $matches)) {
+            $teacherName = trim($matches[1]);
+        }
+
+        // Redirect to teacher analytics export PDF with teacher parameter
+        $url = base_url('teacher/analytics/export-pdf');
+        if ($teacherName) {
+            $url .= '?teacher=' . urlencode($teacherName);
+        }
+        return redirect()->to($url);
+    }
 
     /**
      * Get announcement statistics (AJAX)

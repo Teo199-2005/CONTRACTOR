@@ -62,16 +62,8 @@
   <div class="card-header bg-white">
     <div class="d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Student ID Cards (<?= $totalStudents ?> students)</h5>
-      <div class="d-flex gap-2">
-        <div class="btn-group" role="group">
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="gridView" onclick="toggleView('grid')">
-            <i class="bi bi-grid-3x3-gap"></i>
-          </button>
-          <button type="button" class="btn btn-outline-secondary btn-sm" id="listView" onclick="toggleView('list')">
-            <i class="bi bi-list"></i>
-          </button>
-        </div>
-        <button class="btn btn-outline-primary btn-sm" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print All</button>
+      <div class="col-md-4">
+        <input type="text" class="form-control form-control-sm" id="searchInput" placeholder="Search students..." onkeyup="searchStudents()">
       </div>
     </div>
   </div>
@@ -91,8 +83,8 @@
             <div class="card-body p-3">
               <div class="d-flex align-items-center mb-3">
                 <div class="me-3">
-                  <?php if ($student['photo_path']): ?>
-                    <img src="<?= base_url($student['photo_path']) ?>" alt="Photo" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
+                  <?php if (!empty($student['photo']) && file_exists(FCPATH . 'uploads/enrollment_documents/' . $student['photo'])): ?>
+                    <img src="<?= base_url('uploads/enrollment_documents/' . $student['photo']) ?>" alt="Photo" class="rounded" style="width: 50px; height: 50px; object-fit: cover;">
                   <?php else: ?>
                     <div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
                       <i class="bi bi-person text-white"></i>
@@ -112,8 +104,8 @@
                 <?php endif; ?>
               </div>
               
-              <div class="d-grid gap-2">
-                <a href="<?= base_url('admin/id-cards/view/' . $student['id']) ?>" class="btn btn-primary btn-sm">
+              <div class="d-grid gap-2 mt-2">
+                <a href="<?= base_url('admin/id-cards/view/' . $student['id']) ?>" class="btn btn-light btn-sm">
                   <i class="bi bi-eye me-1"></i>View ID Card
                 </a>
               </div>
@@ -123,50 +115,7 @@
         <?php endforeach; ?>
       </div>
       
-      <!-- List View -->
-      <div id="listViewContainer" class="d-none">
-        <div class="table-responsive">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Photo</th>
-                <th>Name</th>
-                <th>Student ID</th>
-                <th>Grade & Section</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($students as $student): ?>
-              <tr>
-                <td>
-                  <?php if ($student['photo_path']): ?>
-                    <img src="<?= base_url($student['photo_path']) ?>" alt="Photo" class="rounded" style="width: 40px; height: 40px; object-fit: cover;">
-                  <?php else: ?>
-                    <div class="bg-secondary rounded d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                      <i class="bi bi-person text-white"></i>
-                    </div>
-                  <?php endif; ?>
-                </td>
-                <td><?= esc($student['last_name'] . ', ' . $student['first_name']) ?></td>
-                <td><?= esc($student['student_id'] ?? 'Pending') ?></td>
-                <td>
-                  <span class="badge bg-primary me-1">Grade <?= esc($student['grade_level']) ?></span>
-                  <?php if ($student['section_name']): ?>
-                    <span class="badge bg-secondary"><?= esc($student['section_name']) ?></span>
-                  <?php endif; ?>
-                </td>
-                <td>
-                  <a href="<?= base_url('admin/id-cards/view/' . $student['id']) ?>" class="btn btn-primary btn-sm">
-                    <i class="bi bi-eye me-1"></i>View ID Card
-                  </a>
-                </td>
-              </tr>
-              <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
-      </div>
+
     <?php endif; ?>
   </div>
   
@@ -199,29 +148,25 @@
 </div>
 
 <script>
-function toggleView(view) {
-  const gridView = document.getElementById('gridViewContainer');
-  const listView = document.getElementById('listViewContainer');
-  const gridBtn = document.getElementById('gridView');
-  const listBtn = document.getElementById('listView');
-  
-  if (view === 'grid') {
-    gridView.classList.remove('d-none');
-    listView.classList.add('d-none');
-    gridBtn.classList.add('active');
-    listBtn.classList.remove('active');
-  } else {
-    gridView.classList.add('d-none');
-    listView.classList.remove('d-none');
-    gridBtn.classList.remove('active');
-    listBtn.classList.add('active');
-  }
-}
 
-// Set default view
-document.addEventListener('DOMContentLoaded', function() {
-  toggleView('grid');
-});
+</script>
+
+<script>
+function searchStudents() {
+  const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+  const studentCards = document.querySelectorAll('#gridViewContainer .col');
+  
+  studentCards.forEach(card => {
+    const studentName = card.querySelector('h6').textContent.toLowerCase();
+    const studentId = card.querySelector('small').textContent.toLowerCase();
+    
+    if (studentName.includes(searchTerm) || studentId.includes(searchTerm)) {
+      card.style.display = '';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
 </script>
 
 <?= $this->endSection() ?>

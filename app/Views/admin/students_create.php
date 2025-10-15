@@ -29,7 +29,7 @@
     <h5 class="card-title mb-0">Student Information</h5>
   </div>
   <div class="card-body">
-    <form method="post" action="<?= base_url('admin/students/store') ?>">
+    <form method="post" action="<?= base_url('admin/students/store') ?>" enctype="multipart/form-data">
       <?= csrf_field() ?>
       
       <!-- Account Information -->
@@ -39,9 +39,9 @@
         </div>
         <div class="col-md-6">
           <div class="mb-3">
-            <label for="student_id" class="form-label">Student ID <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="student_id" name="student_id" 
-                   value="<?= old('student_id') ?>" required>
+            <label for="lrn" class="form-label">LRN (Learner Reference Number)</label>
+            <input type="text" class="form-control" id="lrn" name="lrn" 
+                   value="<?= old('lrn') ?>" placeholder="Auto-generated if empty">
           </div>
         </div>
         <div class="col-md-6">
@@ -54,7 +54,13 @@
         <div class="col-md-6">
           <div class="mb-3">
             <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
-            <input type="password" class="form-control" id="password" name="password" required>
+            <div class="position-relative">
+              <input type="password" class="form-control" id="password" name="password" required>
+              <button type="button" class="btn position-absolute" id="togglePassword" 
+                      style="right: 10px; top: 50%; transform: translateY(-50%); border: none; background: none; color: #6b7280; z-index: 10;">
+                <i class="bi bi-eye" id="toggleIcon"></i>
+              </button>
+            </div>
             <div class="form-text">Minimum 8 characters</div>
           </div>
         </div>
@@ -65,18 +71,32 @@
         <div class="col-12">
           <h6 class="text-primary border-bottom pb-2 mb-3">Personal Information</h6>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
           <div class="mb-3">
             <label for="first_name" class="form-label">First Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="first_name" name="first_name" 
                    value="<?= old('first_name') ?>" required>
           </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-3">
+          <div class="mb-3">
+            <label for="middle_name" class="form-label">Middle Name</label>
+            <input type="text" class="form-control" id="middle_name" name="middle_name" 
+                   value="<?= old('middle_name') ?>">
+          </div>
+        </div>
+        <div class="col-md-3">
           <div class="mb-3">
             <label for="last_name" class="form-label">Last Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="last_name" name="last_name" 
                    value="<?= old('last_name') ?>" required>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="mb-3">
+            <label for="suffix" class="form-label">Suffix</label>
+            <input type="text" class="form-control" id="suffix" name="suffix" 
+                   value="<?= old('suffix') ?>" placeholder="Jr., Sr., III">
           </div>
         </div>
         <div class="col-md-6">
@@ -124,21 +144,31 @@
         <div class="col-12">
           <h6 class="text-primary border-bottom pb-2 mb-3">Academic Information</h6>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="mb-3">
             <label for="grade_level" class="form-label">Grade Level <span class="text-danger">*</span></label>
             <select class="form-select" id="grade_level" name="grade_level" required>
               <option value="">Select Grade Level</option>
-              <option value="Grade 7" <?= old('grade_level') === 'Grade 7' ? 'selected' : '' ?>>Grade 7</option>
-              <option value="Grade 8" <?= old('grade_level') === 'Grade 8' ? 'selected' : '' ?>>Grade 8</option>
-              <option value="Grade 9" <?= old('grade_level') === 'Grade 9' ? 'selected' : '' ?>>Grade 9</option>
-              <option value="Grade 10" <?= old('grade_level') === 'Grade 10' ? 'selected' : '' ?>>Grade 10</option>
-              <option value="Grade 11" <?= old('grade_level') === 'Grade 11' ? 'selected' : '' ?>>Grade 11</option>
-              <option value="Grade 12" <?= old('grade_level') === 'Grade 12' ? 'selected' : '' ?>>Grade 12</option>
+              <option value="7" <?= old('grade_level') === '7' ? 'selected' : '' ?>>Grade 7</option>
+              <option value="8" <?= old('grade_level') === '8' ? 'selected' : '' ?>>Grade 8</option>
+              <option value="9" <?= old('grade_level') === '9' ? 'selected' : '' ?>>Grade 9</option>
+              <option value="10" <?= old('grade_level') === '10' ? 'selected' : '' ?>>Grade 10</option>
+              <option value="11" <?= old('grade_level') === '11' ? 'selected' : '' ?>>Grade 11</option>
+              <option value="12" <?= old('grade_level') === '12' ? 'selected' : '' ?>>Grade 12</option>
             </select>
           </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
+          <div class="mb-3">
+            <label for="student_type" class="form-label">Student Type <span class="text-danger">*</span></label>
+            <select class="form-select" id="student_type" name="student_type" required>
+              <option value="">Select Type</option>
+              <option value="New Student" <?= old('student_type') === 'New Student' ? 'selected' : '' ?>>New Student</option>
+              <option value="Transferee" <?= old('student_type') === 'Transferee' ? 'selected' : '' ?>>Transferee</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-4">
           <div class="mb-3">
             <label for="section_id" class="form-label">Section</label>
             <select class="form-select" id="section_id" name="section_id">
@@ -163,6 +193,13 @@
             <label for="contact_number" class="form-label">Contact Number</label>
             <input type="text" class="form-control" id="contact_number" name="contact_number" 
                    value="<?= old('contact_number') ?>">
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="mb-3">
+            <label for="photo" class="form-label">2x2 Photo</label>
+            <input type="file" class="form-control" id="photo" name="photo" accept=".jpg,.jpeg,.png">
+            <div class="form-text">Upload student's 2x2 photo (JPG, PNG)</div>
           </div>
         </div>
         <div class="col-md-12">
@@ -210,5 +247,28 @@
     </form>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (togglePassword) {
+        togglePassword.addEventListener('click', function() {
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            
+            if (type === 'text') {
+                toggleIcon.classList.remove('bi-eye');
+                toggleIcon.classList.add('bi-eye-slash');
+            } else {
+                toggleIcon.classList.remove('bi-eye-slash');
+                toggleIcon.classList.add('bi-eye');
+            }
+        });
+    }
+});
+</script>
 
 <?= $this->endSection() ?>

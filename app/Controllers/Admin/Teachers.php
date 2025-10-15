@@ -38,7 +38,7 @@ class Teachers extends BaseController
                    ->groupEnd();
         }
         
-        $teachers = $builder->findAll();
+        $teachers = $builder->orderBy('teachers.created_at', 'DESC')->findAll();
 
         return view('admin/teachers', [
             'title' => 'Manage Teachers - LPHS SMS',
@@ -75,12 +75,12 @@ class Teachers extends BaseController
         // Auto-generate teacher ID
         $currentYear = date('Y');
         $teacherModel = model(TeacherModel::class);
-        $lastTeacher = $teacherModel->select('teacher_id')
-            ->like('teacher_id', $currentYear . '-', 'after')
-            ->orderBy('teacher_id', 'DESC')
+        $lastTeacher = $teacherModel->select('employee_id')
+            ->like('employee_id', $currentYear . '-', 'after')
+            ->orderBy('employee_id', 'DESC')
             ->first();
         
-        if ($lastTeacher && preg_match('/' . $currentYear . '-(\d+)/', $lastTeacher['teacher_id'], $matches)) {
+        if ($lastTeacher && preg_match('/' . $currentYear . '-(\d+)/', $lastTeacher['employee_id'], $matches)) {
             $nextNumber = intval($matches[1]) + 1;
         } else {
             $nextNumber = 1;
@@ -91,6 +91,7 @@ class Teachers extends BaseController
         $rules = [
             'license_number' => 'permit_empty|max_length[20]',
             'first_name' => 'required|min_length[2]|max_length[50]',
+            'middle_name' => 'permit_empty|max_length[50]',
             'last_name' => 'required|min_length[2]|max_length[50]',
             'email' => 'required|valid_email|is_unique[users.email]',
             'password' => 'required|min_length[8]',
@@ -98,11 +99,10 @@ class Teachers extends BaseController
             'date_of_birth' => 'required|valid_date',
             'contact_number' => 'permit_empty|max_length[20]',
             'address' => 'permit_empty|max_length[255]',
-            'department' => 'permit_empty|max_length[100]',
+            'subjects' => 'permit_empty|max_length[100]',
             'position' => 'permit_empty|max_length[100]',
-            'specialization' => 'permit_empty|max_length[100]',
             'date_hired' => 'required|valid_date',
-            'employment_status' => 'required|in_list[active,inactive,resigned,terminated]'
+            'employment_status' => 'required|in_list[active,inactive,on_leave]'
         ];
 
         if (!$this->validate($rules)) {
@@ -115,53 +115,85 @@ class Teachers extends BaseController
         $userModel = model(UserModel::class);
         $teacherModel = model(TeacherModel::class);
 
-        // Create user account first
-        $userData = [
-            'email' => $this->request->getPost('email'),
-            'password' => $this->request->getPost('password'),
-            'active' => 1
-        ];
+        // Start database transaction
+        $db = \Config\Database::connect();
+        $db->transStart();
 
-        $user = $userModel->save($userData);
-        if (!$user) {
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Failed to create user account.');
-        }
+        try {
+            // Create user record
+            $db->table('users')->insert([
+                'email' => $this->request->getPost('email'),
+                'active' => 1,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            $userId = $db->insertID();
+            if (!$userId) {
+                throw new \Exception('Failed to create user account');
+            }
 
-        $userId = $userModel->getInsertID();
+            // Create password hash and auth identity
+            $hashedPassword = password_hash($this->request->getPost('password'), PASSWORD_DEFAULT);
+            $db->table('auth_identities')->insert([
+                'user_id' => $userId,
+                'type' => 'email_password',
+                'name' => '',
+                'secret' => $this->request->getPost('email'),
+                'secret2' => $hashedPassword,
+                'expires' => null,
+                'extra' => null,
+                'force_reset' => 0,
+                'last_used_at' => null,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
 
-        // Add user to teacher group
-        $userEntity = $userModel->find($userId);
-        $userEntity->addGroup('teacher');
+            // Add user to teacher group
+            $db->table('auth_groups_users')->insert([
+                'user_id' => $userId,
+                'group' => 'teacher',
+                'created_at' => date('Y-m-d H:i:s'),
+            ]);
 
-        // Create teacher record
-        $teacherData = [
-            'user_id' => $userId,
-            'teacher_id' => $teacherId,
-            'license_number' => $this->request->getPost('license_number'),
-            'first_name' => $this->request->getPost('first_name'),
-            'last_name' => $this->request->getPost('last_name'),
-            'gender' => $this->request->getPost('gender'),
-            'date_of_birth' => $this->request->getPost('date_of_birth'),
-            'contact_number' => $this->request->getPost('contact_number'),
-            'address' => $this->request->getPost('address'),
-            'department' => $this->request->getPost('subjects'),
-            'position' => $this->request->getPost('position'),
-            'specialization' => $this->request->getPost('subjects'),
-            'date_hired' => $this->request->getPost('date_hired'),
-            'employment_status' => $this->request->getPost('employment_status')
-        ];
+            // Create teacher record
+            $teacherData = [
+                'user_id' => $userId,
+                'employee_id' => $teacherId,
+                'license_number' => $this->request->getPost('license_number'),
+                'first_name' => $this->request->getPost('first_name'),
+                'middle_name' => $this->request->getPost('middle_name'),
+                'last_name' => $this->request->getPost('last_name'),
+                'email' => $this->request->getPost('email'),
+                'gender' => $this->request->getPost('gender'),
+                'date_of_birth' => $this->request->getPost('date_of_birth'),
+                'contact_number' => $this->request->getPost('contact_number'),
+                'address' => $this->request->getPost('address'),
+                'department' => $this->request->getPost('subjects'),
+                'position' => $this->request->getPost('position'),
+                'specialization' => $this->request->getPost('subjects'),
+                'date_hired' => $this->request->getPost('date_hired'),
+                'employment_status' => $this->request->getPost('employment_status')
+            ];
 
-        if ($teacherModel->save($teacherData)) {
+            if (!$teacherModel->save($teacherData)) {
+                throw new \Exception('Failed to create teacher record: ' . implode(', ', $teacherModel->errors()));
+            }
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+
             return redirect()->to('admin/teachers')
                 ->with('success', 'Teacher created successfully.');
-        } else {
-            // If teacher creation fails, delete the user account
-            $userModel->delete($userId);
+
+        } catch (\Exception $e) {
+            $db->transRollback();
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to create teacher record.');
+                ->with('error', 'Failed to create teacher: ' . $e->getMessage());
         }
     }
 
@@ -338,10 +370,7 @@ class Teachers extends BaseController
         $sectionModel = model(SectionModel::class);
 
         // Get teacher details
-        $teacher = $teacherModel->select('teachers.*, users.email')
-            ->join('users', 'users.id = teachers.user_id', 'left')
-            ->where('teachers.id', $teacherId)
-            ->first();
+        $teacher = $teacherModel->where('id', $teacherId)->first();
 
         if (!$teacher) {
             return redirect()->to('admin/teachers')->with('error', 'Teacher not found');
@@ -379,10 +408,7 @@ class Teachers extends BaseController
         $sectionModel = model(SectionModel::class);
 
         // Get teacher details - using WHERE clause instead of find()
-        $teacher = $teacherModel->select('teachers.*, users.email')
-            ->join('users', 'users.id = teachers.user_id', 'left')
-            ->where('teachers.id', $teacherId)
-            ->first();
+        $teacher = $teacherModel->where('id', $teacherId)->first();
 
         if (!$teacher) {
             return $this->response->setStatusCode(404)->setJSON(['error' => 'Teacher not found']);
@@ -451,33 +477,52 @@ class Teachers extends BaseController
             return $this->response->setJSON(['success' => false, 'error' => 'Unauthorized']);
         }
 
+        log_message('info', 'Saving schedule for teacher ID: ' . $teacherId);
+        
         $scheduleModel = model(TeacherScheduleModel::class);
         
         // Get JSON data from request body
         $input = $this->request->getJSON(true);
         $schedules = $input['schedules'] ?? [];
+        
+        log_message('info', 'Schedule data received: ' . json_encode($schedules));
 
         if (empty($schedules)) {
             return $this->response->setJSON(['success' => false, 'error' => 'No schedule data provided']);
         }
 
-        // Delete existing schedules
-        $scheduleModel->where('teacher_id', $teacherId)->delete();
+        try {
+            // Delete existing schedules
+            $deleted = $scheduleModel->where('teacher_id', $teacherId)->delete();
+            log_message('info', 'Deleted existing schedules: ' . ($deleted ? 'success' : 'failed'));
 
-        // Insert new schedules
-        foreach ($schedules as $schedule) {
-            $scheduleModel->insert([
-                'teacher_id' => $teacherId,
-                'subject_id' => $schedule['subject_id'],
-                'section_id' => $schedule['section_id'],
-                'day_of_week' => $schedule['day_of_week'],
-                'start_time' => $schedule['start_time'],
-                'end_time' => $schedule['end_time'],
-                'room' => $schedule['room'] ?? null,
-                'school_year' => '2024-2025'
-            ]);
+            // Insert new schedules
+            $inserted = 0;
+            foreach ($schedules as $schedule) {
+                $data = [
+                    'teacher_id' => $teacherId,
+                    'subject_id' => $schedule['subject_id'],
+                    'section_id' => $schedule['section_id'],
+                    'day_of_week' => $schedule['day_of_week'],
+                    'start_time' => $schedule['start_time'],
+                    'end_time' => $schedule['end_time'],
+                    'room' => $schedule['room'] ?? null,
+                    'school_year' => '2025-2026'
+                ];
+                
+                if ($scheduleModel->insert($data)) {
+                    $inserted++;
+                } else {
+                    log_message('error', 'Failed to insert schedule: ' . json_encode($data));
+                }
+            }
+            
+            log_message('info', 'Inserted ' . $inserted . ' schedule entries');
+            
+            return $this->response->setJSON(['success' => true, 'message' => 'Schedule saved successfully']);
+        } catch (\Exception $e) {
+            log_message('error', 'Schedule save error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
         }
-
-        return $this->response->setJSON(['success' => true, 'message' => 'Schedule saved successfully']);
     }
 }
