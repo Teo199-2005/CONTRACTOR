@@ -153,8 +153,8 @@
                         <small class="text-muted"><?= esc($section['adviser_email']) ?></small>
                       <?php endif; ?>
                     <?php else: ?>
-                      <span class="text-warning">
-                        <i class="bi bi-exclamation-triangle"></i> No Adviser
+                      <span class="text-danger">
+                        <i class="bi bi-exclamation-triangle-fill"></i> No Adviser
                       </span>
                     <?php endif; ?>
                   </td>
@@ -221,6 +221,19 @@
 #assignStudentsModal .modal-footer .btn-danger:hover {
   background-color: #c82333 !important;
   border-color: #c82333 !important;
+  color: white !important;
+}
+
+/* Custom styling for confirmation modal cancel button */
+#confirmationModal .modal-footer .btn-secondary {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: white !important;
+}
+
+#confirmationModal .modal-footer .btn-secondary:hover {
+  background-color: #5a6268 !important;
+  border-color: #545b62 !important;
   color: white !important;
 }
 </style>
