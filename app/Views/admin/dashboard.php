@@ -473,10 +473,23 @@ document.addEventListener('DOMContentLoaded', function() {
 let predictionChart;
 let currentPredictionYear = 2026;
 
+// Get current enrollment data for predictions
+const currentEnrollmentData = <?= $monthlyEnrollmentData ?? '[5, 4, 1, 4, 7, 63, 51, 27, 11, 14, 3, 1]' ?>;
+const currentTotal = currentEnrollmentData.reduce((a, b) => a + b, 0);
+
 const predictionData = <?= $predictionData ?? 'null' ?> || {
-  2026: { monthly: [8, 6, 4, 6, 10, 67, 54, 29, 8, 2, 0, 0], yearly: [194] },
-  2027: { monthly: [9, 7, 4, 7, 11, 72, 58, 31, 9, 2, 0, 0], yearly: [210] },
-  2028: { monthly: [10, 8, 4, 8, 12, 78, 63, 34, 10, 2, 0, 0], yearly: [229] }
+  2026: { 
+    monthly: currentEnrollmentData.map(val => Math.round(val * 1.08)), 
+    yearly: [Math.round(currentTotal * 1.08)] 
+  },
+  2027: { 
+    monthly: currentEnrollmentData.map(val => Math.round(val * 1.1664)), 
+    yearly: [Math.round(currentTotal * 1.1664)] 
+  },
+  2028: { 
+    monthly: currentEnrollmentData.map(val => Math.round(val * 1.2597)), 
+    yearly: [Math.round(currentTotal * 1.2597)] 
+  }
 };
 
 

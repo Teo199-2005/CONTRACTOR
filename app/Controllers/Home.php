@@ -46,15 +46,18 @@ class Home extends BaseController
         try {
             $enrollmentData = $this->getEnrollmentData();
             $predictionData = $this->generatePredictions($enrollmentData);
+            $monthlyEnrollmentData = $this->getMonthlyEnrollmentData();
         } catch (\Throwable $e) {
             // Handle database errors gracefully
+            $monthlyEnrollmentData = [5, 4, 1, 4, 7, 63, 51, 27, 11, 14, 3, 1];
         }
         
         return view('landing', [
             'title' => 'LPHS School Management System',
             'announcements' => $announcements,
             'enrollmentData' => json_encode($enrollmentData),
-            'predictionData' => json_encode($predictionData)
+            'predictionData' => json_encode($predictionData),
+            'monthlyEnrollmentData' => json_encode($monthlyEnrollmentData)
         ]);
     }
     
@@ -97,46 +100,29 @@ class Home extends BaseController
     
     private function generatePredictions(array $historicalData): array
     {
+        // Get current enrolled student data as baseline
+        $currentEnrolledData = $this->getMonthlyEnrollmentData();
+        $currentTotal = array_sum($currentEnrolledData);
+        
+        // Calculate growth rate based on current enrollment trends
+        $baseGrowthRate = 0.08; // 8% annual growth (typical for growing schools)
+        
         $predictions = [];
         
-        // Philippine school enrollment pattern (percentages by month)
-        // June-July: Peak enrollment (start of school year)
-        // Aug-Sep: Late enrollments
-        // Oct-May: Minimal enrollments, transfers
-        $philippinePattern = [
-            0.04, // Jan - Mid-year transfers
-            0.03, // Feb - Final enrollments before cutoff
-            0.02, // Mar - Very few
-            0.03, // Apr - Some transfers
-            0.05, // May - Pre-enrollment preparation
-            0.35, // Jun - PEAK: School year starts
-            0.28, // Jul - HIGH: Late enrollments
-            0.15, // Aug - Moderate: Final late enrollments
-            0.04, // Sep - Few stragglers
-            0.01, // Oct - Minimal
-            0.00, // Nov - Almost none
-            0.00  // Dec - None (Christmas break)
-        ];
-        
-        // Calculate growth trend from historical data
-        $growth2023to2024 = ($historicalData[2024]['yearly'][0] - $historicalData[2023]['yearly'][0]) / $historicalData[2023]['yearly'][0];
-        $baseGrowthRate = max(0.05, min(0.15, $growth2023to2024)); // Cap between 5-15%
-        
-        // Generate predictions for 2026-2028
+        // Generate predictions for 2026-2028 based on current enrollment data
         for ($year = 2026; $year <= 2028; $year++) {
-            $yearsFromBase = $year - 2024;
-            $growthFactor = pow(1 + $baseGrowthRate, $yearsFromBase);
-            $predictedTotal = round($historicalData[2024]['yearly'][0] * $growthFactor);
+            $yearsFromNow = $year - 2025;
+            $growthFactor = pow(1 + $baseGrowthRate, $yearsFromNow);
             
-            // Apply Philippine enrollment pattern
+            // Apply growth to each month's current enrollment
             $monthlyPredictions = [];
-            foreach ($philippinePattern as $ratio) {
-                $monthlyPredictions[] = round($predictedTotal * $ratio);
+            foreach ($currentEnrolledData as $monthValue) {
+                $monthlyPredictions[] = round($monthValue * $growthFactor);
             }
             
             $predictions[$year] = [
                 'monthly' => $monthlyPredictions,
-                'yearly' => [$predictedTotal]
+                'yearly' => [array_sum($monthlyPredictions)]
             ];
         }
         
@@ -159,6 +145,63 @@ class Home extends BaseController
                 'success' => false,
                 'message' => 'Failed to fetch enrollment data'
             ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Get monthly enrollment data for enrolled students chart
+     */
+    private function getMonthlyEnrollmentData(): array
+    {
+        $db = \Config\Database::connect();
+        
+        try {
+            // Get students enrolled before today (for scattering)
+            $oldStudents = $db->query("
+                SELECT COUNT(*) as count 
+                FROM students 
+                WHERE DATE(created_at) < CURDATE()
+                AND enrollment_status = 'enrolled'
+                AND deleted_at IS NULL
+            ")->getRow()->count ?? 0;
+            
+            // Get students enrolled today and onwards (real data)
+            $newStudents = $db->query("
+                SELECT MONTH(created_at) as month, COUNT(*) as count 
+                FROM students 
+                WHERE DATE(created_at) >= CURDATE()
+                AND enrollment_status = 'enrolled'
+                AND deleted_at IS NULL
+                GROUP BY MONTH(created_at)
+            ")->getResultArray();
+            
+            // Philippine enrollment distribution pattern (Jan-Oct only, Nov-Dec = 0)
+            $distribution = [0.03, 0.02, 0.02, 0.07, 0.20, 0.45, 0.15, 0.04, 0.02, 0.00, 0.00, 0.00];
+            
+            $monthlyData = [];
+            for ($month = 1; $month <= 12; $month++) {
+                if ($month <= 10) {
+                    // Scatter old data across Jan-Oct only
+                    $count = (int)round($oldStudents * $distribution[$month - 1]);
+                } else {
+                    // Nov-Dec start with 0 (no scattered data)
+                    $count = 0;
+                }
+                
+                // Add real new enrollments for this month
+                foreach ($newStudents as $newStudent) {
+                    if ($newStudent['month'] == $month) {
+                        $count += (int)$newStudent['count'];
+                    }
+                }
+                
+                $monthlyData[] = $count;
+            }
+            
+            return $monthlyData;
+        } catch (\Throwable $e) {
+            // Fallback data
+            return [5, 4, 1, 4, 7, 63, 51, 27, 11, 14, 3, 1];
         }
     }
 

@@ -1001,48 +1001,29 @@ class Dashboard extends BaseController
     
     private function generatePredictions(array $historicalData): array
     {
-        $predictions = [];
-        
-        // Philippine school enrollment pattern (percentages by month)
-        // June-July: Peak enrollment (start of school year)
-        // Aug-Sep: Late enrollments
-        // Oct-May: Minimal enrollments, transfers
-        $philippinePattern = [
-            0.04, // Jan - Mid-year transfers
-            0.03, // Feb - Final enrollments before cutoff
-            0.02, // Mar - Very few
-            0.03, // Apr - Some transfers
-            0.05, // May - Pre-enrollment preparation
-            0.35, // Jun - PEAK: School year starts
-            0.28, // Jul - HIGH: Late enrollments
-            0.15, // Aug - Moderate: Final late enrollments
-            0.04, // Sep - Few stragglers
-            0.01, // Oct - Minimal
-            0.00, // Nov - Almost none
-            0.00  // Dec - None (Christmas break)
-        ];
-        
-        // Get current enrolled student data for base prediction
+        // Get current enrolled student data as baseline
         $currentEnrolledData = $this->getMonthlyEnrollmentData();
         $currentTotal = array_sum($currentEnrolledData);
         
         // Calculate growth rate based on current enrollment trends
         $baseGrowthRate = 0.08; // 8% annual growth (typical for growing schools)
         
-        // Generate predictions for 2026-2028
+        $predictions = [];
+        
+        // Generate predictions for 2026-2028 based on current enrollment data
         for ($year = 2026; $year <= 2028; $year++) {
             $yearsFromNow = $year - 2025;
-            $predictedTotal = round($currentTotal * pow(1 + $baseGrowthRate, $yearsFromNow));
+            $growthFactor = pow(1 + $baseGrowthRate, $yearsFromNow);
             
-            // Apply Philippine enrollment pattern
+            // Apply growth to each month's current enrollment
             $monthlyPredictions = [];
-            foreach ($philippinePattern as $ratio) {
-                $monthlyPredictions[] = round($predictedTotal * $ratio);
+            foreach ($currentEnrolledData as $monthValue) {
+                $monthlyPredictions[] = round($monthValue * $growthFactor);
             }
             
             $predictions[$year] = [
                 'monthly' => $monthlyPredictions,
-                'yearly' => [$predictedTotal]
+                'yearly' => [array_sum($monthlyPredictions)]
             ];
         }
         
