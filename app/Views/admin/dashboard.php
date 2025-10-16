@@ -161,47 +161,24 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php /* Removed feature tiles grid as requested */ ?>
 
-<!-- Compact Dashboard Grid Layout -->
+<!-- Top Row: 2 Charts -->
 <div class="row g-3 mb-3" style="display: flex; flex-wrap: nowrap;">
-  <!-- Top Row: 2 Large Charts Side by Side -->
+  <!-- Enrolled Students Chart -->
   <div class="col-6" style="flex: 1; min-width: 0;">
     <div class="card h-100">
       <div class="card-header py-2">
-        <div class="d-flex justify-content-between align-items-center">
-          <h6 class="card-title mb-0 fw-semibold">Students Enrolled This Year</h6>
-          <div class="chart-controls d-flex align-items-center gap-1">
-            <button class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="changeEnrollmentPeriod(-1)"><i class="bi bi-chevron-left"></i></button>
-            <span id="enrollmentPeriod" class="mx-1 fw-semibold text-primary">2024</span>
-            <button class="btn btn-sm btn-outline-secondary px-2 py-1" onclick="changeEnrollmentPeriod(1)"><i class="bi bi-chevron-right"></i></button>
-            <select id="enrollmentView" class="form-select form-select-sm ms-1" style="width: auto;" onchange="updateEnrollmentChart()">
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-          </div>
-        </div>
+        <h6 class="card-title mb-0 fw-semibold">Enrolled Students</h6>
+        <small class="text-muted">Monthly enrollment data</small>
       </div>
       <div class="card-body py-2">
-        <div class="row mb-2">
-          <div class="col-6">
-            <div class="text-center">
-              <div class="h5 mb-0 text-primary"><?= $stats['total_students'] ?? 0 ?></div>
-              <small class="text-muted">This Year</small>
-            </div>
-          </div>
-          <div class="col-6">
-            <div class="text-center">
-              <div class="h5 mb-0 text-success">+<?= round((($stats['total_students'] ?? 0) / max(1, 1)) * 100, 0) ?>%</div>
-              <small class="text-muted">Growth</small>
-            </div>
-          </div>
-        </div>
-        <div class="chart-container" style="height: 140px;">
-          <canvas id="enrollmentTrendChart"></canvas>
+        <div class="chart-container" style="height: 180px;">
+          <canvas id="enrollmentChart"></canvas>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Enrollment Predictions -->
   <div class="col-6" style="flex: 1; min-width: 0;">
     <div class="card h-100">
       <div class="card-header py-2">
@@ -493,59 +470,20 @@ document.addEventListener('DOMContentLoaded', function() {
 <!-- Chart.js for enrollment charts -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-let enrollmentChart, predictionChart;
-let currentEnrollmentYear = 2024;
+let predictionChart;
 let currentPredictionYear = 2026;
 
-// Real enrollment data from database
-const enrollmentData = <?= $enrollmentData ?? 'null' ?> || {
-  2023: { monthly: [3, 2, 1, 2, 4, 35, 28, 15, 6, 2, 1, 1], yearly: [100] },
-  2024: { monthly: [4, 3, 1, 3, 5, 47, 38, 20, 8, 3, 2, 1], yearly: [135] },
-  2025: { monthly: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], yearly: [0] }
-};
-
 const predictionData = <?= $predictionData ?? 'null' ?> || {
-  2026: { monthly: [5, 4, 1, 4, 7, 63, 51, 27, 11, 4, 3, 1], yearly: [181] },
-  2027: { monthly: [6, 5, 1, 5, 8, 72, 58, 31, 12, 5, 3, 1], yearly: [207] },
-  2028: { monthly: [7, 6, 1, 6, 9, 82, 66, 35, 14, 6, 4, 1], yearly: [237] }
+  2026: { monthly: [8, 6, 4, 6, 10, 67, 54, 29, 8, 2, 0, 0], yearly: [194] },
+  2027: { monthly: [9, 7, 4, 7, 11, 72, 58, 31, 9, 2, 0, 0], yearly: [210] },
+  2028: { monthly: [10, 8, 4, 8, 12, 78, 63, 34, 10, 2, 0, 0], yearly: [229] }
 };
 
 
 
 function initializeCharts() {
-  const root = getComputedStyle(document.documentElement);
-  const colorPrimary = '#3b82f6';
   const colorSuccess = '#10b981';
   const colorHeading = '#0f172a';
-
-  // Enrollment Chart
-  const enrollmentCtx = document.getElementById('enrollmentTrendChart').getContext('2d');
-  enrollmentChart = new Chart(enrollmentCtx, {
-    type: 'line',
-    data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-      datasets: [{
-        label: 'Students Enrolled',
-        data: enrollmentData[currentEnrollmentYear].monthly,
-        borderColor: colorPrimary,
-        backgroundColor: colorPrimary + '20',
-        borderWidth: 3,
-        fill: true,
-        tension: 0.4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        y: { beginAtZero: true, ticks: { color: colorHeading } },
-        x: { ticks: { color: colorHeading } }
-      },
-      plugins: {
-        legend: { display: false }
-      }
-    }
-  });
 
   // Prediction Chart
   const predictionCtx = document.getElementById('predictionChart').getContext('2d');
@@ -578,34 +516,12 @@ function initializeCharts() {
   });
 }
 
-function changeEnrollmentPeriod(direction) {
-  currentEnrollmentYear += direction;
-  if (currentEnrollmentYear < 2023) currentEnrollmentYear = 2023;
-  if (currentEnrollmentYear > 2025) currentEnrollmentYear = 2025;
-  document.getElementById('enrollmentPeriod').textContent = currentEnrollmentYear;
-  updateEnrollmentChart();
-}
-
 function changePredictionPeriod(direction) {
   currentPredictionYear += direction;
   if (currentPredictionYear < 2025) currentPredictionYear = 2025;
   if (currentPredictionYear > 2027) currentPredictionYear = 2027;
   document.getElementById('predictionPeriod').textContent = currentPredictionYear;
   updatePredictionChart();
-}
-
-function updateEnrollmentChart() {
-  const view = document.getElementById('enrollmentView').value;
-  const data = enrollmentData[currentEnrollmentYear];
-  
-  if (view === 'monthly') {
-    enrollmentChart.data.labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    enrollmentChart.data.datasets[0].data = data.monthly;
-  } else {
-    enrollmentChart.data.labels = [currentEnrollmentYear.toString()];
-    enrollmentChart.data.datasets[0].data = data.yearly;
-  }
-  enrollmentChart.update();
 }
 
 function updatePredictionChart() {
@@ -681,10 +597,61 @@ function initializeGradeChart() {
   });
 }
 
+// Initialize Enrollment Chart
+function initializeEnrollmentChart() {
+  const enrollmentCtx = document.getElementById('enrollmentChart').getContext('2d');
+  const colorPrimary = '#10b981';
+  const colorHeading = '#0f172a';
+  
+  const monthlyData = <?= $monthlyEnrollmentData ?? '[0,0,0,0,0,0,0,0,0,0,0,0]' ?>;
+  
+  new Chart(enrollmentCtx, {
+    type: 'bar',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      datasets: [{
+        label: 'Enrolled Students',
+        data: monthlyData,
+        backgroundColor: colorPrimary + '80',
+        borderColor: colorPrimary,
+        borderWidth: 2,
+        borderRadius: 6,
+        maxBarThickness: 30,
+        categoryPercentage: 0.8,
+        barPercentage: 0.6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1, color: colorHeading },
+          grid: { color: 'rgba(15,23,42,0.06)' }
+        },
+        x: {
+          ticks: { color: colorHeading },
+          grid: { display: false }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.raw} students enrolled`
+          }
+        }
+      }
+    }
+  });
+}
+
 // Initialize all charts when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
   initializeCharts();
   initializeGradeChart();
+  initializeEnrollmentChart();
 });
 
 

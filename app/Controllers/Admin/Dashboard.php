@@ -62,9 +62,23 @@ class Dashboard extends BaseController
             ->limit(5)
             ->findAll();
 
-        // Get enrollment data for charts
-        $enrollmentData = $this->getEnrollmentData();
+        // Get enrollment data for charts - use real database data
+        $enrollmentData = $this->getEnrollmentDataFromDB();
         $predictionData = $this->generatePredictions($enrollmentData);
+        
+        // Get current month enrollments for real-time updates
+        $db = \Config\Database::connect();
+        
+        // Get monthly enrollment data for enrolled students chart
+        $monthlyEnrollmentData = $this->getMonthlyEnrollmentData();
+        
+        // Count all students enrolled in current school year (2025-2026)
+        $currentMonthEnrollments = $db->query("
+            SELECT COUNT(*) as count FROM students 
+            WHERE enrollment_status = 'enrolled' 
+            AND school_year = '2025-2026'
+            AND deleted_at IS NULL
+        ")->getRow()->count ?? 0;
 
         return view('admin/dashboard', [
             'title' => 'Admin Dashboard - LPHS SMS',
@@ -72,8 +86,11 @@ class Dashboard extends BaseController
             'recentEnrollments' => $recentEnrollments,
             'enrollmentByGrade' => $enrollmentByGrade,
             'recentAnnouncements' => $recentAnnouncements,
-            'enrollmentData' => json_encode($enrollmentData),
+            'enrollmentData' => $enrollmentData,
+            'enrollmentDataJson' => json_encode($enrollmentData),
             'predictionData' => json_encode($predictionData),
+            'monthlyEnrollmentData' => json_encode($monthlyEnrollmentData),
+            'currentMonthEnrollments' => $currentMonthEnrollments,
             'currentQuarter' => $systemSettingModel->getCurrentQuarter()
         ]);
     }
@@ -937,52 +954,87 @@ class Dashboard extends BaseController
         ]);
     }
 
-    private function getEnrollmentData(): array
+    private function getEnrollmentDataFromDB(): array
     {
-        $studentModel = new StudentModel();
+        $db = \Config\Database::connect();
         
-        try {
-            $totalStudents = $studentModel->where('enrollment_status', 'enrolled')->countAllResults();
-            $pattern = [3, 2, 1, 2, 4, 35, 28, 15, 6, 2, 1, 1];
+        // Get enrollment data for multiple years
+        $enrollmentData = [];
+        
+        for ($year = 2023; $year <= 2025; $year++) {
+            $monthlyResults = $db->query("
+                SELECT 
+                    MONTH(created_at) as month,
+                    COUNT(*) as count
+                FROM students 
+                WHERE YEAR(created_at) = ?
+                AND deleted_at IS NULL
+                GROUP BY MONTH(created_at)
+                ORDER BY MONTH(created_at)
+            ", [$year])->getResultArray();
             
-            $data = [];
-            for ($year = 2023; $year <= 2025; $year++) {
-                $baseCount = $year == 2024 ? $totalStudents : round($totalStudents * 0.8);
-                $monthly = [];
-                
-                foreach ($pattern as $percent) {
-                    $monthly[] = round(($baseCount * $percent) / 100);
+            // Initialize monthly array with zeros
+            $monthly = array_fill(0, 12, 0);
+            $yearlyTotal = 0;
+            
+            // Fill in actual counts from database
+            foreach ($monthlyResults as $result) {
+                if ($result['month'] >= 1 && $result['month'] <= 12) {
+                    $monthly[$result['month'] - 1] = (int)$result['count'];
+                    $yearlyTotal += (int)$result['count'];
                 }
-                
-                $data[$year] = [
-                    'monthly' => $monthly,
-                    'yearly' => [array_sum($monthly)]
-                ];
             }
             
-            return $data;
-        } catch (\Throwable $e) {
-            return [
-                2023 => ['monthly' => [3, 2, 1, 2, 4, 35, 28, 15, 6, 2, 1, 1], 'yearly' => [100]],
-                2024 => ['monthly' => [4, 3, 1, 3, 5, 47, 38, 20, 8, 3, 2, 1], 'yearly' => [135]],
-                2025 => ['monthly' => [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 'yearly' => [0]]
+            $enrollmentData[$year] = [
+                'monthly' => $monthly, 
+                'yearly' => [$yearlyTotal]
             ];
         }
+        
+        return $enrollmentData;
+    }
+    
+    private function getEnrollmentData(): array
+    {
+        return $this->getEnrollmentDataFromDB();
     }
     
     private function generatePredictions(array $historicalData): array
     {
         $predictions = [];
-        $philippinePattern = [0.04, 0.03, 0.02, 0.03, 0.05, 0.35, 0.28, 0.15, 0.04, 0.01, 0.00, 0.00];
         
-        $growth2023to2024 = ($historicalData[2024]['yearly'][0] - $historicalData[2023]['yearly'][0]) / $historicalData[2023]['yearly'][0];
-        $baseGrowthRate = max(0.05, min(0.15, $growth2023to2024));
+        // Philippine school enrollment pattern (percentages by month)
+        // June-July: Peak enrollment (start of school year)
+        // Aug-Sep: Late enrollments
+        // Oct-May: Minimal enrollments, transfers
+        $philippinePattern = [
+            0.04, // Jan - Mid-year transfers
+            0.03, // Feb - Final enrollments before cutoff
+            0.02, // Mar - Very few
+            0.03, // Apr - Some transfers
+            0.05, // May - Pre-enrollment preparation
+            0.35, // Jun - PEAK: School year starts
+            0.28, // Jul - HIGH: Late enrollments
+            0.15, // Aug - Moderate: Final late enrollments
+            0.04, // Sep - Few stragglers
+            0.01, // Oct - Minimal
+            0.00, // Nov - Almost none
+            0.00  // Dec - None (Christmas break)
+        ];
         
+        // Get current enrolled student data for base prediction
+        $currentEnrolledData = $this->getMonthlyEnrollmentData();
+        $currentTotal = array_sum($currentEnrolledData);
+        
+        // Calculate growth rate based on current enrollment trends
+        $baseGrowthRate = 0.08; // 8% annual growth (typical for growing schools)
+        
+        // Generate predictions for 2026-2028
         for ($year = 2026; $year <= 2028; $year++) {
-            $yearsFromBase = $year - 2024;
-            $growthFactor = pow(1 + $baseGrowthRate, $yearsFromBase);
-            $predictedTotal = round($historicalData[2024]['yearly'][0] * $growthFactor);
+            $yearsFromNow = $year - 2025;
+            $predictedTotal = round($currentTotal * pow(1 + $baseGrowthRate, $yearsFromNow));
             
+            // Apply Philippine enrollment pattern
             $monthlyPredictions = [];
             foreach ($philippinePattern as $ratio) {
                 $monthlyPredictions[] = round($predictedTotal * $ratio);
@@ -1165,6 +1217,58 @@ class Dashboard extends BaseController
             'sample_students' => $sampleStudents,
             'total_students' => $studentModel->countAllResults()
         ]);
+    }
+
+    /**
+     * Get monthly enrollment data for enrolled students chart
+     */
+    private function getMonthlyEnrollmentData(): array
+    {
+        $db = \Config\Database::connect();
+        
+        // Get students enrolled before today (for scattering)
+        $oldStudents = $db->query("
+            SELECT COUNT(*) as count 
+            FROM students 
+            WHERE DATE(created_at) < CURDATE()
+            AND enrollment_status = 'enrolled'
+            AND deleted_at IS NULL
+        ")->getRow()->count ?? 0;
+        
+        // Get students enrolled today and onwards (real data)
+        $newStudents = $db->query("
+            SELECT MONTH(created_at) as month, COUNT(*) as count 
+            FROM students 
+            WHERE DATE(created_at) >= CURDATE()
+            AND enrollment_status = 'enrolled'
+            AND deleted_at IS NULL
+            GROUP BY MONTH(created_at)
+        ")->getResultArray();
+        
+        // Philippine enrollment distribution pattern (Jan-Oct only, Nov-Dec = 0)
+        $distribution = [0.03, 0.02, 0.02, 0.07, 0.20, 0.45, 0.15, 0.04, 0.02, 0.00, 0.00, 0.00];
+        
+        $monthlyData = [];
+        for ($month = 1; $month <= 12; $month++) {
+            if ($month <= 10) {
+                // Scatter old data across Jan-Oct only
+                $count = (int)round($oldStudents * $distribution[$month - 1]);
+            } else {
+                // Nov-Dec start with 0 (no scattered data)
+                $count = 0;
+            }
+            
+            // Add real new enrollments for this month
+            foreach ($newStudents as $newStudent) {
+                if ($newStudent['month'] == $month) {
+                    $count += (int)$newStudent['count'];
+                }
+            }
+            
+            $monthlyData[] = $count;
+        }
+        
+        return $monthlyData;
     }
 
     /**
